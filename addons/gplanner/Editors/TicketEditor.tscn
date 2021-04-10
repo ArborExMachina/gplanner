@@ -1,0 +1,45 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://addons/gplanner/Widgets/LinkList.tscn" type="PackedScene" id=1]
+[ext_resource path="res://addons/gplanner/Editors/TicketEditor.gd" type="Script" id=2]
+
+[node name="TicketEditor" type="VBoxContainer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = 10.0
+margin_bottom = 10.0
+script = ExtResource( 2 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+blockedby_linklist = NodePath("GridContainer/BlockedByList")
+blocks_linklist = NodePath("GridContainer/BlockingList")
+
+[node name="Name" type="Label" parent="."]
+margin_right = 1024.0
+margin_bottom = 14.0
+text = "Ticket Name"
+
+[node name="GridContainer" type="GridContainer" parent="."]
+margin_top = 18.0
+margin_right = 1024.0
+margin_bottom = 600.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BlockingList" parent="GridContainer" instance=ExtResource( 1 )]
+list_name = "Blocking"
+
+[node name="BlockedByList" parent="GridContainer" instance=ExtResource( 1 )]
+margin_top = 24.0
+margin_bottom = 44.0
+list_name = "Blocked By"
+
+[node name="Description" type="TextEdit" parent="GridContainer"]
+margin_top = 48.0
+margin_right = 1024.0
+margin_bottom = 582.0
+size_flags_horizontal = 3
+size_flags_vertical = 3

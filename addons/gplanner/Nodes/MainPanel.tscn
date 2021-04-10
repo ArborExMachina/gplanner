@@ -1,0 +1,52 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://addons/gplanner/Nodes/MainPanel.gd" type="Script" id=1]
+
+[node name="MainPanel" type="PanelContainer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+inspector_container = NodePath("VSplitContainer/Body/Inspector")
+
+[node name="VSplitContainer" type="VSplitContainer" parent="."]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 1017.0
+margin_bottom = 593.0
+dragger_visibility = 1
+
+[node name="MenuStrip" type="HBoxContainer" parent="VSplitContainer"]
+margin_right = 1010.0
+margin_bottom = 20.0
+
+[node name="FileMenu" type="MenuButton" parent="VSplitContainer/MenuStrip"]
+margin_right = 35.0
+margin_bottom = 20.0
+text = "File"
+items = [ "Item 0", null, 0, false, false, 0, 0, null, "", false, "Item 1", null, 0, false, false, 1, 0, null, "", false, "Item 2", null, 0, false, false, 2, 0, null, "", false ]
+
+[node name="NewTicket" type="Button" parent="VSplitContainer/MenuStrip"]
+margin_left = 39.0
+margin_right = 121.0
+margin_bottom = 20.0
+text = "New Ticket"
+
+[node name="Body" type="HSplitContainer" parent="VSplitContainer"]
+margin_top = 32.0
+margin_right = 1010.0
+margin_bottom = 586.0
+
+[node name="Groups" type="VBoxContainer" parent="VSplitContainer/Body"]
+margin_bottom = 554.0
+
+[node name="Inspector" type="MarginContainer" parent="VSplitContainer/Body"]
+margin_left = 12.0
+margin_right = 1010.0
+margin_bottom = 554.0
+custom_constants/margin_right = 10
+custom_constants/margin_left = 10
+custom_constants/margin_bottom = 10
+[connection signal="pressed" from="VSplitContainer/MenuStrip/NewTicket" to="." method="_on_NewTicket_pressed"]

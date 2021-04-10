@@ -1,0 +1,20 @@
+Want:
+-be able to create a ticket with description and blockers/blocking readouts
+-be able to organize tickets under milestones or leave in an unsorted pool (backlog)
+	-pulling a ticket in should also pull in its dependencies if previous milestones don't already have them
+-be able to oraganize milestones according to simple linear order and/or setting expected due dates
+-ticket reference markup/linking/buttons in the description-box/etc that allows easy link following
+-ticket editor displays all ticket associations (blocking, blockers, milestone)
+-double click ticket name label to allow changing ticket name. Change should propgate.
+-inspect button next to milestones to open milestone inspector/editor
+-drag to rearrange milestones on the main panel list
+
+Need:
+-main panel (in progress)
+-editor for tickets (in progress)
+-editor for milestones
+-file format
+	-tickets referenced by id, not by name. Name should just be loaded/altered through a truth source via id lookup.
+-graph algos for pulling tickets in
+	- maybe make a sidebar editor on the milestone screen that allows easy pullin distribution to other, preceding milestones as desired
+	- also include an "add remaining to current milestone" button
