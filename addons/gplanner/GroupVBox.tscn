@@ -1,45 +1,34 @@
 [gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://addons/gplanner/GroupVBox.gd" type="Script" id=1]
-
-[sub_resource type="GDScript" id=1]
-script/source = "extends MarginContainer
-
-
-# Declare member variables here. Examples:
-# var a: int = 2
-# var b: String = \"text\"
-
-
-# Called when the node enters the scene tree for the first time.
-"
+[ext_resource path="res://addons/gplanner/themes/Ubuntu_Condensed/FontTheme.tres" type="Theme" id=2]
 
 [node name="GroupBox" type="VBoxContainer"]
 margin_right = 88.0
 margin_bottom = 92.0
+theme = ExtResource( 2 )
 script = ExtResource( 1 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
-group_name = "Group"
-items = [ "test", "test1", "test2" ]
 
 [node name="GroupButton" type="Button" parent="."]
-margin_right = 88.0
-margin_bottom = 20.0
+margin_right = 300.0
+margin_bottom = 25.0
+rect_min_size = Vector2( 300, 0 )
 toggle_mode = true
 text = "Group"
-flat = true
+clip_text = true
+align = 0
 
 [node name="MemberArea" type="MarginContainer" parent="."]
-margin_top = 24.0
-margin_right = 88.0
-margin_bottom = 92.0
+margin_top = 29.0
+margin_right = 300.0
+margin_bottom = 29.0
 custom_constants/margin_left = 10
-script = SubResource( 1 )
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MemberArea"]
 margin_left = 10.0
-margin_right = 88.0
-margin_bottom = 68.0
+margin_right = 300.0
+
 [connection signal="toggled" from="GroupButton" to="." method="_on_GroupButton_toggled"]

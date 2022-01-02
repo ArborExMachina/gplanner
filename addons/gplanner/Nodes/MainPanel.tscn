@@ -1,6 +1,29 @@
-[gd_scene load_steps=2 format=2]
+[gd_scene load_steps=5 format=2]
 
 [ext_resource path="res://addons/gplanner/Nodes/MainPanel.gd" type="Script" id=1]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends PopupMenu
+
+func _on_Close_pressed() -> void:
+	hide()
+"
+
+[sub_resource type="GDScript" id=2]
+script/source = "extends AcceptDialog
+
+
+func _on_LineEdit_text_entered(new_text: String) -> void:
+	get_ok().emit_signal(\"pressed\")
+"
+
+[sub_resource type="GDScript" id=3]
+script/source = "extends AcceptDialog
+
+
+func _on_LineEdit_text_entered(new_text: String) -> void:
+	get_ok().emit_signal(\"pressed\")
+"
 
 [node name="MainPanel" type="PanelContainer"]
 anchor_right = 1.0
@@ -9,7 +32,6 @@ script = ExtResource( 1 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
-inspector_container = NodePath("VSplitContainer/Body/Inspector")
 
 [node name="VSplitContainer" type="VSplitContainer" parent="."]
 margin_left = 7.0
@@ -22,31 +44,141 @@ dragger_visibility = 1
 margin_right = 1010.0
 margin_bottom = 20.0
 
-[node name="FileMenu" type="MenuButton" parent="VSplitContainer/MenuStrip"]
-margin_right = 35.0
+[node name="ProjectMenu" type="MenuButton" parent="VSplitContainer/MenuStrip"]
+margin_right = 57.0
 margin_bottom = 20.0
-text = "File"
-items = [ "Item 0", null, 0, false, false, 0, 0, null, "", false, "Item 1", null, 0, false, false, 1, 0, null, "", false, "Item 2", null, 0, false, false, 2, 0, null, "", false ]
+text = "Project"
+flat = false
+items = [ "New", null, 0, false, false, 0, 0, null, "", false, "Open", null, 0, false, false, 1, 0, null, "", false, "Save", null, 0, false, false, 2, 0, null, "", false, "Details", null, 0, false, false, 3, 0, null, "", false, "Close Current", null, 0, false, false, 4, 0, null, "", false ]
 
 [node name="NewTicket" type="Button" parent="VSplitContainer/MenuStrip"]
-margin_left = 39.0
-margin_right = 121.0
+margin_left = 61.0
+margin_right = 143.0
 margin_bottom = 20.0
 text = "New Ticket"
+
+[node name="ProjectNameLabel" type="Label" parent="VSplitContainer/MenuStrip"]
+margin_left = 147.0
+margin_top = 3.0
+margin_right = 147.0
+margin_bottom = 17.0
 
 [node name="Body" type="HSplitContainer" parent="VSplitContainer"]
 margin_top = 32.0
 margin_right = 1010.0
 margin_bottom = 586.0
 
-[node name="Groups" type="VBoxContainer" parent="VSplitContainer/Body"]
+[node name="TabContainer" type="TabContainer" parent="VSplitContainer/Body"]
+margin_right = 200.0
 margin_bottom = 554.0
+rect_min_size = Vector2( 200, 0 )
+
+[node name="Milestones" type="VBoxContainer" parent="VSplitContainer/Body/TabContainer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
+
+[node name="NewMilestoneButton" type="Button" parent="VSplitContainer/Body/TabContainer/Milestones"]
+margin_right = 192.0
+margin_bottom = 20.0
+text = "+"
+
+[node name="Tasks" type="VBoxContainer" parent="VSplitContainer/Body/TabContainer"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
 
 [node name="Inspector" type="MarginContainer" parent="VSplitContainer/Body"]
-margin_left = 12.0
+margin_left = 212.0
 margin_right = 1010.0
 margin_bottom = 554.0
 custom_constants/margin_right = 10
 custom_constants/margin_left = 10
 custom_constants/margin_bottom = 10
+
+[node name="PopupContainer" type="CenterContainer" parent="."]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 1017.0
+margin_bottom = 593.0
+mouse_filter = 2
+
+[node name="OpenProjectOptions" type="PopupMenu" parent="PopupContainer"]
+margin_left = 473.0
+margin_top = 258.0
+margin_right = 536.0
+margin_bottom = 328.0
+items = [ "Item 0", null, 0, false, false, 0, 0, null, "", false, "Item 1", null, 0, false, false, 1, 0, null, "", false, "Item 2", null, 0, false, false, 2, 0, null, "", false ]
+script = SubResource( 1 )
+
+[node name="Button" type="Button" parent="PopupContainer/OpenProjectOptions"]
+margin_left = 60.0
+margin_top = -18.0
+margin_right = 80.0
+margin_bottom = 2.0
+text = "X"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="NewProjectName" type="AcceptDialog" parent="PopupContainer"]
+margin_left = 355.0
+margin_top = 259.0
+margin_right = 655.0
+margin_bottom = 327.0
+rect_min_size = Vector2( 300, 0 )
+window_title = "New Project Name"
+script = SubResource( 2 )
+
+[node name="LineEdit" type="LineEdit" parent="PopupContainer/NewProjectName"]
+margin_left = 8.0
+margin_top = 8.0
+margin_right = 292.0
+margin_bottom = 32.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="NewMilestoneName" type="AcceptDialog" parent="PopupContainer"]
+margin_left = 355.0
+margin_top = 259.0
+margin_right = 655.0
+margin_bottom = 327.0
+rect_min_size = Vector2( 300, 0 )
+window_title = "New Milestone Name"
+script = SubResource( 3 )
+
+[node name="LineEdit" type="LineEdit" parent="PopupContainer/NewMilestoneName"]
+margin_left = 8.0
+margin_top = 8.0
+margin_right = 292.0
+margin_bottom = 32.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="SaveUnsavedDialog" type="ConfirmationDialog" parent="PopupContainer"]
+margin_left = 353.0
+margin_top = 255.0
+margin_right = 656.0
+margin_bottom = 330.0
+window_title = "Unsaved Changes"
+dialog_text = "You must save before preforming this action.
+Save now?"
+
 [connection signal="pressed" from="VSplitContainer/MenuStrip/NewTicket" to="." method="_on_NewTicket_pressed"]
+[connection signal="pressed" from="VSplitContainer/Body/TabContainer/Milestones/NewMilestoneButton" to="." method="_on_NewMilestoneButton_pressed"]
+[connection signal="index_pressed" from="PopupContainer/OpenProjectOptions" to="." method="_on_OpenProjectOptions_index_pressed"]
+[connection signal="pressed" from="PopupContainer/OpenProjectOptions/Button" to="PopupContainer/OpenProjectOptions" method="_on_Close_pressed"]
+[connection signal="confirmed" from="PopupContainer/NewProjectName" to="." method="_on_NewProjectName_confirmed"]
+[connection signal="text_entered" from="PopupContainer/NewProjectName/LineEdit" to="PopupContainer/NewProjectName" method="_on_LineEdit_text_entered"]
+[connection signal="confirmed" from="PopupContainer/NewMilestoneName" to="." method="_on_NewMilestoneName_confirmed"]
+[connection signal="text_entered" from="PopupContainer/NewMilestoneName/LineEdit" to="PopupContainer/NewMilestoneName" method="_on_LineEdit_text_entered"]
+[connection signal="confirmed" from="PopupContainer/SaveUnsavedDialog" to="." method="_on_SaveUnsavedDialog_confirmed"]

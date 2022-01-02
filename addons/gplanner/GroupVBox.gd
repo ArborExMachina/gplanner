@@ -1,36 +1,63 @@
 extends VBoxContainer
 tool
 
-signal item_clicked(group_name, item_name)
+const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
+const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 
-export var group_name := "Group"
-export var items := []
+signal item_clicked(task_id)
+
+var is_expanded:bool = false
+
+var _milestone:Milestone
 
 onready var member_box = $MemberArea
+onready var vbox = $MemberArea/VBoxContainer
 
-func setup(group_name:String, items:Array)->void:
-	self.group_name = group_name
-	self.items = items
+func load_milestone(project, milestone_id:int)->void:
 	
+	var children = vbox.get_children()
+	for child in children:
+		vbox.remove_child(child)
+		child.queue_free()
+	
+	_milestone = project.get_milestone(milestone_id)
+	var group_button = $GroupButton
+	group_button.text = _milestone.milestone_name
+	for task_id in _milestone.get_task_ids():
+		var task_button := Button.new()
+		vbox.add_child(task_button)
+		task_button.text = project.get_task_title(task_id)
+		task_button.connect("button_down", self, "item_button_clicked", [task_id, task_button])
+		task_button.focus_mode = Control.FOCUS_NONE
+		task_button.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
+		task_button.align = Button.ALIGN_LEFT
 
-func _ready() -> void:
-	$GroupButton.text = group_name
-	for item in items:
-		var item_button := Button.new()
-		item_button.text = item
-		item_button.connect("button_down", self, "item_button_clicked", [item])
-		$MemberArea/VBoxContainer.add_child(item_button)
+	var norm_sb:StyleBoxFlat = StyleBoxFlat.new()
+	norm_sb.bg_color = _milestone._color
+	group_button.add_stylebox_override("normal", norm_sb)
+	
+	var pressed_sb:StyleBoxFlat = StyleBoxFlat.new()
+	pressed_sb.bg_color = _milestone._color
+	pressed_sb.border_color = _milestone._color.darkened(0.2)
+	pressed_sb.border_width_left = 10
+	group_button.add_stylebox_override("pressed", pressed_sb)
+		
+	if is_expanded:
+		shrink()
+		expand()
 
 func expand()->void:
 	add_child(member_box)
+	is_expanded = true
 
 
 func shrink()->void:
 	remove_child(member_box)
+	is_expanded = false
 
 
-func item_button_clicked(item)->void:
-	emit_signal("item_clicked",group_name, item)
+func item_button_clicked(task_id:int, task_button:Button)->void:
+	emit_signal("item_clicked", task_id)
 
 
 func _on_GroupButton_toggled(button_pressed: bool) -> void:
