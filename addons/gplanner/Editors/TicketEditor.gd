@@ -36,15 +36,15 @@ func _process(delta: float) -> void:
 		return
 	_auto_save_countdown -= delta
 	if _auto_save_countdown <= 0:
-		_project.save_task(_task._id)
-		emit_signal("task_changes_commited", _task._id)
+		_project.save_task(_task.id)
+		emit_signal("task_changes_commited", _task.id)
 		_needs_save = false
 
 func load_ticket(project, task_id:int)->bool:
 	if _task:
-		if _task._id == task_id:
+		if _task.id == task_id:
 			return true
-		project.close_task(_task._id)
+		project.close_task(_task.id)
 	
 	_clear()
 	_project = project
@@ -64,7 +64,7 @@ func load_ticket(project, task_id:int)->bool:
 	_description.text = _task.description
 	for ms in project.get_milestones():
 		ms = ms as Milestone
-		_milestone_menu.add_item(ms.milestone_name, ms._id)
+		_milestone_menu.add_item(ms.milestone_name, ms.id)
 	_milestone_menu.add_item("Ungrouped")
 	
 	_task_name.grab_focus()
@@ -72,7 +72,7 @@ func load_ticket(project, task_id:int)->bool:
 
 func update_milestone_options(new_milestone:Milestone)->void:
 	if !_milestone_menu: return
-	_milestone_menu.add_item(new_milestone.milestone_name, new_milestone._id)
+	_milestone_menu.add_item(new_milestone.milestone_name, new_milestone.id)
 
 func _queue_save()->void:
 	_needs_save = true
@@ -113,15 +113,15 @@ func _on_milestone_clicked(index:int)->void:
 	_milestone_menu_button.text = ms_name
 	
 	var old_ms_id = _task.milestone_id
-	_project.assign_task_to_milestone(_task._id, ms_id)
+	_project.assign_task_to_milestone(_task.id, ms_id)
 	var new_ms_id = _task.milestone_id
 	
-	emit_signal("milestone_grouping_change", _task._id, old_ms_id, new_ms_id)
+	emit_signal("milestone_grouping_change", _task.id, old_ms_id, new_ms_id)
 
 func _on_Name_text_changed(new_text: String) -> void:
 	_queue_save()
 	_task.name = new_text
-	emit_signal("title_changed", _task._id, new_text)
+	emit_signal("title_changed", _task.id, new_text)
 
 
 func _on_Description_text_changed() -> void:
@@ -131,15 +131,15 @@ func _on_Description_text_changed() -> void:
 
 func _on_SaveButton_pressed() -> void:
 	if !_task or !_project: return
-	var task_id:int = _task._id
+	var task_id:int = _task.id
 	_task.name = _task_name.text
-	_project.save_task(_task._id) # ensure that the new task is part of the project, not a stray saved file
+	_project.save_task(_task.id) # ensure that the new task is part of the project, not a stray saved file
 	emit_signal("task_changes_commited", task_id)
 
 
 func _on_Name_text_entered(new_text: String) -> void:
 	if !_task or !_project: return
-	var task_id:int = _task._id
+	var task_id:int = _task.id
 	_task.name = _task_name.text
-	_project.save_task(_task._id) # ensure that the new task is part of the project, not a stray saved file
+	_project.save_task(_task.id) # ensure that the new task is part of the project, not a stray saved file
 	emit_signal("task_changes_commited", task_id)

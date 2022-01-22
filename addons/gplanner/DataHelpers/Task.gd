@@ -11,18 +11,23 @@ var description:String setget set_description, get_description
 var milestone_id:int setget set_milestone_id, get_milestone_id
 
 class BindingData:
-	var name:String
-	var id:int
+	var title:String
+	var task_id:int
 	var milestone_id:int
+
 
 func _init():
 	_unsaved_changes = true
 	name = "New Task"
 	description = ""
 	milestone_id = -1
+	id = -1
+	_is_backed = false
+
 
 func get_id()->int:
 	return id
+
 
 func set_id(value:int)->void:
 	if !_is_backed:
@@ -30,7 +35,6 @@ func set_id(value:int)->void:
 		_is_backed = true
 	else:
 		push_error("Task Ids can not be changed")
-
 
 
 func get_name()->String:
@@ -55,21 +59,3 @@ func set_milestone_id(value:int)->void:
 		_stored_ms_id = milestone_id
 	_unsaved_changes = true
 	milestone_id = value
-
-func commit_data(file:File)->bool:
-	var data := {
-		"id": id,
-		"name": name,
-		"description": description,
-	}
-	var json = JSON.print(data)
-	file.store_string(json)
-	
-	_unsaved_changes = false
-	return true
-
-#func load_from_data(data:Dictionary)->void:
-#	_id = data.id
-#	name = data.name
-#	description = data.description
-#	_unsaved_changes = false

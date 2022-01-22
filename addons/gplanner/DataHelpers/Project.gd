@@ -15,7 +15,7 @@ var _name:String = "Default"
 var _nextTaskID:int = 1
 var _milestones := {}
 var _open_tasks := {}
-var _task_data := {}
+
 
 static func set_working_dir()->String:
 	var dir := Directory.new()
@@ -47,40 +47,31 @@ func _data_path()->String:
 
 func new_milestone(name:String)->Milestone:
 	_unsaved_changes = true
-	var ms = Milestone.new(_nextTaskID)
+	var ms = Milestone.new()
 	_nextTaskID += 1
 	ms.milestone_name = name
-	ms._id
-	_milestones[ms._id] = ms
+	ms.id
+	_milestones[ms.id] = ms
 	return ms
 
 func get_milestones()->Array:
 	return _milestones.values()
 
 func get_milestone(id:int)->Milestone:
-	if id in _milestones:
-		return _milestones[id]
-	else:
-		return null
+	return _milestones.get(id, null)
 
 func get_all_task_data()->Array:
-	var arr := []
-	for data in _task_data.values():
-		arr.append(data)
-	return arr
+	return _dsource.get_all_task_binding_data()
 
 func get_task_title(task_id:int)->String:
-	var data = _task_data.get(task_id, null)
+	var data = _dsource.get_task_binding_data(task_id)
 	return data.title if data else "TASK NOT FOUND"
 
 func open_new_task()->Task:
 	_unsaved_changes = true
-	var task := Task.new(_nextTaskID)
-	_nextTaskID += 1
-	_open_tasks[task._id] = task
+	var task := Task.new()
+	_open_tasks[task.id] = task
 	
-	var task_data:TaskData
-	_task_data[task._id] = TaskData.from_task(task)
 	
 	save_all()
 	return task
@@ -88,34 +79,21 @@ func open_new_task()->Task:
 func open_task(id:int)->Task:
 	if id in _open_tasks:
 		return _open_tasks[id]
-	
-	var file = File.new()
-	file.open("%s/%s.json" % [_dir_root(), id], File.READ)
-	var json = file.get_as_text()
-	var data = JSON.parse(json).result
-	file.close()
-	var task:Task = Task.new(-1)
-	task.load_from_data(data)
-	if task._id in _open_tasks:
-		push_error("task '%s' id %s differs from provided id of %s" % [task.name, task._id, id])
+		
+	var task:Task = _dsource.retrieve_task(id)
+
+	if task.id in _open_tasks:
+		push_error("task '%s' id %s differs from provided id of %s" % [task.name, task.id, id])
 		return null
-	_open_tasks[task._id] = task
-	var x = _task_data[task._id]
-	var y = x.milestone_id
-	task.milestone_id = y
-	#task.milestone_id = _task_data[task._id].milestone_id
-	task._unsaved_changes = false
+	_open_tasks[task.id] = task
 	return task
 
 func save_task(id:int)->void:
 	var task := _open_tasks.get(id, null) as Task
+	if task == null:
+		push_error("tried to save a null task")
+		return
 	_dsource.commit_task(task)
-	if task:
-		var file := File.new()
-		file.open("%s/%s.json" % [_dir_root(), task.id], File.WRITE)
-		task.commit_data(file)
-		file.close()
-		_task_data[id] = TaskData.from_task(task)
 
 func close_task(id:int)->void:
 	save_task(id)
@@ -132,7 +110,7 @@ func get_open_task(id:int)->Task:
 
 func assign_task_to_milestone(task_id:int, ms_id:int)->void:
 	_unsaved_changes = true
-	var task_data = _task_data[task_id]
+	var task_data:Task.BindingData = _dsource.get_task_binding_data(task_id)
 	var old_ms:Milestone = get_milestone(task_data.milestone_id)
 	var new_ms:Milestone = get_milestone(ms_id)
 	
@@ -140,7 +118,7 @@ func assign_task_to_milestone(task_id:int, ms_id:int)->void:
 		old_ms.remove_task(task_id)
 	if new_ms:
 		new_ms.add_task(task_id)
-		task_data.milestone_id = new_ms._id
+		task_data.milestone_id = new_ms.id
 	else:
 		task_data.milestone_id = -1
 	
@@ -152,66 +130,30 @@ func open(name:String)->bool:
 	_dsource = DataSource.new()
 	_dsource.open(name)
 	_name = name
-	var dir = Directory.new()
-	var data_file = File.new()
-	if dir.dir_exists(_dir_root()):
-		data_file.open(_data_path(), File.READ)
 		
-		var json:String = data_file.get_as_text()
-		var data:Dictionary = JSON.parse(json).result
+	for ms in _dsource.retrieve_all_milestone():
+		ms = ms as Milestone
+		if ms == null:
+			push_error("added a null milestone")
+		_milestones[ms.id] = ms
 		
-		if data.save_format_version != save_format_version:
-			printerr("Expected save format version %s, found %s" % [save_format_version, data.save_format_version])
-			return false
-		_nextTaskID = data.nextTaskID
-		for task_dict in data.task_data:
-			task_dict.id = int(task_dict.id)
-			_task_data[task_dict.id] = task_dict
-			open_task(task_dict.id)
-		
-		for ms in data["milestones"]:
-			var milestone := Milestone.new(-1)
-			milestone.load_from_data(ms)
-			_milestones[milestone._id] = milestone
-		
-		return true
-	else:
-		dir.make_dir(_dir_root())
-		var saved := save_all()
-		return saved
+	return true
+
 
 func save_all()->bool:
-	var milestones_data = []
 	for ms in _milestones:
 		ms = _milestones[ms] as Milestone
-		ms.commit_data(milestones_data)
 		_dsource.commit_milestone(ms)
 	
 	for id in _open_tasks:
 		save_task(id)
 	
+	# can only link task after milestones and tasks both have valid ids in the db
 	for ms in _milestones:
 		ms = _milestones[ms] as Milestone
 		for tid in ms._task_ids:
-			var task:Task = _open_tasks[int(tid)] as Task
-			_dsource._commit_task_milestone_link(task.id, ms.id)
-		
-	
-	var flat_task_data := []
-	for task_data in _task_data.values():
-		flat_task_data.append(task_data)
-	
-	var data := {
-		"save_format_version" : save_format_version,
-		"nextTaskID" : _nextTaskID,
-		"milestones" : milestones_data,
-		"task_data" : flat_task_data
-	}
-	var json = JSON.print(data, "\t")
-	
-	var proj_data_file = File.new()
-	proj_data_file.open(_data_path(), File.WRITE)
-	proj_data_file.store_string(json)
+			var task:Task.BindingData = _dsource.get_task_binding_data(tid)
+			_dsource._commit_task_milestone_link(task.task_id, ms.id)
 	
 	_unsaved_changes = false
 	return true

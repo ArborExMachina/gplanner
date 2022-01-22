@@ -120,15 +120,15 @@ func _refresh_task_list(only_clear:bool = false)->void:
 		task_list_container.add_child(task_button)
 		task_button.text = task_data.title
 		task_button.clip_text = true
-		task_button.connect("pressed", self, "_handle_task_click", [task_data.id])
+		task_button.connect("pressed", self, "_handle_task_click", [task_data.task_id])
 
 func _add_milestone(milestone:Milestone)->void:
 	var group_box:GroupBox = group_scene.instance()
 	groups_container.add_child(group_box)
-	group_box.load_milestone(project, milestone._id)
+	group_box.load_milestone(project, milestone.id)
 	group_box.shrink()
 	group_box.connect("item_clicked", self, "_handle_task_click")
-	_group_boxes[milestone._id] = group_box
+	_group_boxes[milestone.id] = group_box
 	ticket_editor_instance.update_milestone_options(milestone)
 
 func _set_inspector(type)->void:
@@ -233,9 +233,9 @@ func _on_task_grouping_changed(task_id:int, old_group_id:int, new_group_id:int)-
 	#HACK: this whole method is a hack. Instead of smartly updating only what changed, 
 	# we just nuke the things and have them reload. (The nuking happens at the top of load_ms
 	if old_groupbox:
-		old_groupbox.load_milestone(project, old_ms._id)
+		old_groupbox.load_milestone(project, old_ms.id)
 	if new_groupbox:
-		new_groupbox.load_milestone(project, new_ms._id)
+		new_groupbox.load_milestone(project, new_ms.id)
 	project.save_all()
 
 func _on_editied_task_title_change(task_id:int, new_title:String)->void:
@@ -249,6 +249,6 @@ func _on_editied_task_saved(task_id:int)->void:
 	var milestone: Milestone = project.get_milestone(task_id)
 	if !milestone: 
 		return
-	var group_box:GroupBox = _group_boxes[milestone._id]
+	var group_box:GroupBox = _group_boxes[milestone.id]
 	if group_box.is_expanded:
-		group_box.load_milestone(project, milestone._id)
+		group_box.load_milestone(project, milestone.id)
