@@ -7,7 +7,9 @@ const _working_dir = "user://Projects"
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 const TaskData = preload("res://addons/gplanner/DataHelpers/TaskData.gd")
+const DataSource = preload("res://addons/gplanner/DataHelpers/DataSource.gd")
 
+var _dsource:DataSource
 var _unsaved_changes:bool = false
 var _name:String = "Default"
 var _nextTaskID:int = 1
@@ -95,18 +97,22 @@ func open_task(id:int)->Task:
 	var task:Task = Task.new(-1)
 	task.load_from_data(data)
 	if task._id in _open_tasks:
-		printerr("task '%s' id %s differs from provided id of %s" % [task.name, task._id, id])
+		push_error("task '%s' id %s differs from provided id of %s" % [task.name, task._id, id])
 		return null
 	_open_tasks[task._id] = task
-	task.milestone_id = _task_data[task._id].milestone_id
+	var x = _task_data[task._id]
+	var y = x.milestone_id
+	task.milestone_id = y
+	#task.milestone_id = _task_data[task._id].milestone_id
 	task._unsaved_changes = false
 	return task
 
 func save_task(id:int)->void:
 	var task := _open_tasks.get(id, null) as Task
-	if task and task._unsaved_changes:
+	_dsource.commit_task(task)
+	if task:
 		var file := File.new()
-		file.open("%s/%s.json" % [_dir_root(), task._id], File.WRITE)
+		file.open("%s/%s.json" % [_dir_root(), task.id], File.WRITE)
 		task.commit_data(file)
 		file.close()
 		_task_data[id] = TaskData.from_task(task)
@@ -143,6 +149,8 @@ func assign_task_to_milestone(task_id:int, ms_id:int)->void:
 		task.milestone_id = task_data.milestone_id
 
 func open(name:String)->bool:
+	_dsource = DataSource.new()
+	_dsource.open(name)
 	_name = name
 	var dir = Directory.new()
 	var data_file = File.new()
@@ -159,6 +167,7 @@ func open(name:String)->bool:
 		for task_dict in data.task_data:
 			task_dict.id = int(task_dict.id)
 			_task_data[task_dict.id] = task_dict
+			open_task(task_dict.id)
 		
 		for ms in data["milestones"]:
 			var milestone := Milestone.new(-1)
@@ -176,9 +185,17 @@ func save_all()->bool:
 	for ms in _milestones:
 		ms = _milestones[ms] as Milestone
 		ms.commit_data(milestones_data)
+		_dsource.commit_milestone(ms)
 	
 	for id in _open_tasks:
 		save_task(id)
+	
+	for ms in _milestones:
+		ms = _milestones[ms] as Milestone
+		for tid in ms._task_ids:
+			var task:Task = _open_tasks[int(tid)] as Task
+			_dsource._commit_task_milestone_link(task.id, ms.id)
+		
 	
 	var flat_task_data := []
 	for task_data in _task_data.values():

@@ -4,6 +4,8 @@ const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 
 var _id:int
 var _unsaved_changes:bool = false
+var _is_backed:bool = false
+var id:int setget set_id, get_id
 var milestone_name:String setget set_ms_name, get_ms_name
 var _task_ids := []
 var _color:Color
@@ -17,6 +19,16 @@ func _init(id:int) -> void:
 		randf(),
 		1.0
 	)
+
+func get_id()->int:
+	return id
+
+func set_id(value:int)->void:
+	if !_is_backed:
+		id = value
+		_is_backed = true
+	else:
+		push_error("Task Ids can not be changed")
 
 func add_task(id:int)->void:
 	if id in _task_ids:
@@ -61,7 +73,8 @@ func load_from_data(data:Dictionary):
 	_id = data.id
 	milestone_name = data.name
 	_task_ids = data.task_ids
-	_unsaved_changes = false
 	
 	var cs = data.color.split(",")
 	_color = Color(float(cs[0]), float(cs[1]), float(cs[2]), float(cs[3]))
+	
+	_unsaved_changes = false
