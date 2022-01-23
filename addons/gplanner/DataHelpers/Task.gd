@@ -1,5 +1,8 @@
 extends Reference
 
+signal changed(field, value)
+enum Fields{Name, Description, MilestoneID, Status}
+
 var _unsaved_changes:bool = false
 
 var _is_backed:bool = false
@@ -9,11 +12,13 @@ var id:int setget set_id, get_id
 var name:String setget set_name, get_name
 var description:String setget set_description, get_description
 var milestone_id:int setget set_milestone_id, get_milestone_id
+var status:int setget set_status, get_status
 
 class BindingData:
 	var title:String
 	var task_id:int
 	var milestone_id:int
+	var status:int
 
 
 func _init():
@@ -43,6 +48,7 @@ func get_name()->String:
 func set_name(value:String)->void:
 	_unsaved_changes = true
 	name = value
+	emit_signal("changed", Fields.Name, value)
 
 func get_description()->String:
 	return description
@@ -50,6 +56,7 @@ func get_description()->String:
 func set_description(value:String)->void:
 	_unsaved_changes = true
 	description = value
+	emit_signal("changed", Fields.Description, value)
 
 func get_milestone_id()->int:
 	return milestone_id
@@ -59,3 +66,13 @@ func set_milestone_id(value:int)->void:
 		_stored_ms_id = milestone_id
 	_unsaved_changes = true
 	milestone_id = value
+	emit_signal("changed", Fields.MilestoneID, value)
+
+
+func set_status(value:int)->void:
+	_unsaved_changes = true
+	status = value
+	emit_signal("changed", Fields.Status, value)
+
+func get_status()->int:
+	return status

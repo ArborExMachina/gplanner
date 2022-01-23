@@ -1,7 +1,14 @@
-extends Resource
+extends Reference
 
 const save_format_version = 0.1
 const _working_dir = "user://Projects"
+
+signal abandoned_task(id)
+signal completed_task(id)
+signal deleted_task(id)
+signal deleted_milestone(id)
+signal task_opened(task)
+signal milestone_created(ms)
 
 #types
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
@@ -45,6 +52,24 @@ func _dir_root()->String:
 func _data_path()->String:
 	return "%s/ProjectData.json" % _dir_root()
 
+func _remove_task_from_milestone(task_id:int)->void:
+	if task_id < 0:
+		return
+	var binding_data:Task.BindingData = _dsource.get_task_binding_data(task_id)
+	if binding_data.milestone_id < 0:
+		return
+	
+	if task_id in _open_tasks:
+		var task:Task = _open_tasks[task_id]
+		task.milestone_id = -1
+		_dsource.commit_task(task)
+	
+	for ms in _milestones:
+		if ms.contains_task(task_id):
+			ms.remove_task(task_id)
+			_dsource.commit_milestone(ms)
+
+
 func new_milestone(name:String)->Milestone:
 	_unsaved_changes = true
 	var ms = Milestone.new()
@@ -52,6 +77,7 @@ func new_milestone(name:String)->Milestone:
 	ms.milestone_name = name
 	ms.id
 	_milestones[ms.id] = ms
+	emit_signal("milestone_created", ms)
 	return ms
 
 func get_milestones()->Array:
@@ -74,6 +100,7 @@ func open_new_task()->Task:
 	
 	
 	save_all()
+	emit_signal("task_opened", task)
 	return task
 
 func open_task(id:int)->Task:
@@ -86,14 +113,15 @@ func open_task(id:int)->Task:
 		push_error("task '%s' id %s differs from provided id of %s" % [task.name, task.id, id])
 		return null
 	_open_tasks[task.id] = task
+	emit_signal("task_opened", task)
 	return task
 
-func save_task(id:int)->void:
+func save_task(id:int)->bool:
 	var task := _open_tasks.get(id, null) as Task
 	if task == null:
-		push_error("tried to save a null task")
-		return
+		return false
 	_dsource.commit_task(task)
+	return true
 
 func close_task(id:int)->void:
 	save_task(id)
@@ -148,15 +176,9 @@ func save_all()->bool:
 	for id in _open_tasks:
 		save_task(id)
 	
-	# can only link task after milestones and tasks both have valid ids in the db
-	for ms in _milestones:
-		ms = _milestones[ms] as Milestone
-		for tid in ms._task_ids:
-			var task:Task.BindingData = _dsource.get_task_binding_data(tid)
-			_dsource._commit_task_milestone_link(task.task_id, ms.id)
-	
 	_unsaved_changes = false
 	return true
+
 
 func is_saved_since_changes() -> bool:
 	if _unsaved_changes:
@@ -170,3 +192,23 @@ func is_saved_since_changes() -> bool:
 		if tsk._unsaved_changes:
 			return false
 	return true
+
+
+func complete_task(id:int)->void:
+	_remove_task_from_milestone(id)
+	emit_signal("completed_task", id)
+
+func abandon_task(id:int)->void:
+	_remove_task_from_milestone(id)
+	emit_signal("abandoned_task", id)
+
+func delete_task(id:int)->void:
+	_remove_task_from_milestone(id)
+	close_task(id)
+	_dsource.delete_task(id)
+	emit_signal("deleted_task", id)
+
+func delete_milestone(id:int)->void:
+	_dsource.delete_milestone(id)
+	_milestones.erase(id)
+	emit_signal("deleted_milestone", id)

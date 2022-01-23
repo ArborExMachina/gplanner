@@ -1,5 +1,8 @@
 extends Reference
 
+signal changed(field, value)
+enum Fields{Name, Tasks, Colr}
+
 var _unsaved_changes:bool = false
 var _is_backed:bool = false
 var id:int setget set_id, get_id
@@ -33,6 +36,7 @@ func add_task(id:int)->void:
 		return
 	_unsaved_changes = true
 	_task_ids.append(id)
+	emit_signal("changed", Fields.Tasks, id)
 
 func remove_task(id:int)->void:
 	var index:int = -1
@@ -44,6 +48,7 @@ func remove_task(id:int)->void:
 	if index > -1:
 		_unsaved_changes = true
 		_task_ids.remove(index)
+		emit_signal("changed", Fields.Tasks, id)
 
 func get_task_ids()->Array:
 	return _task_ids
@@ -57,3 +62,4 @@ func get_ms_name()->String:
 func set_ms_name(value:String)->void:
 	_unsaved_changes = true
 	milestone_name = value
+	emit_signal("changed", Fields.Name, value)

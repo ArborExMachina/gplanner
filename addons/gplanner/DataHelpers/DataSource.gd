@@ -50,7 +50,7 @@ func _init_db()->void:
 		"Id": {"data_type": "int", "not_null": true, "primary_key": true, "auto_increment": true},
 		"Title": {"data_type": "TEXT", "not_null": true},
 		"Description": {"data_type": "BLOB"},
-		"Completed": {"data_type": "int", "not_null": true, "default": 0},
+		"Status": {"data_type": "int", "not_null": true, "default": 0},
 	})
 	_db.create_table("TaskHierarchy", {
 		"ParentId": {"data_type": "int", "not_null":true, "foreign_key": "Tasks.Id"},
@@ -64,7 +64,7 @@ func _init_db()->void:
 );"""
 	_do_query(q)
 
-func _commit_task_milestone_link(task_id:int, ms_id:int)->void:
+func link_task_to_milestone(task_id:int, ms_id:int)->void:
 	if task_id < 0:
 		return
 	
@@ -72,9 +72,13 @@ func _commit_task_milestone_link(task_id:int, ms_id:int)->void:
 	_do_query(query)
 	print(_db.query_result)
 	
+	if ms_id < 0:
+		return
+	
 	query = "INSERT INTO MilestoneTasks (MilestoneID, TaskID) VALUES (%s, %s)" % [ms_id, task_id]
 	_do_query(query)
 	print(_db.query_result)
+
 
 func _do_query(query:String)->void:
 	if !_db.query(query):
@@ -106,6 +110,9 @@ func open(source_name:String)->bool:
 	
 	return true
 
+func close()->void:
+	_db.close_db()
+
 
 func get_db_version()->int:
 	var q:String = "SELECT Value FROM ProjectInfo WHERE Field = 'DBVersion'"
@@ -113,6 +120,20 @@ func get_db_version()->int:
 	if len(_db.query_result) != 1:
 		push_error("failed to get db version")
 	return int(_db.query_result[0].Value)
+
+# untested, probably not needed anyways, but here for the query if it's ever useful
+#func get_task_backlog_ids()->Array:
+#	var ids := []
+#	var q:String = """SELECT t.Id 
+#					  FROM Tasks t
+#					  LEFT OUTER JOIN MilestoneTasks mt
+#					  ON t.ID = mt.TaskID
+#					  WHERE (t.Status = 0 OR t.Status = 1 OR t.Status = 2) AND mt.MilestoneID > -1; 
+#"""
+#	_do_query(q)
+#	for row in _db.query_result:
+#		ids.append(row.Id)
+#	return ids
 
 
 func migrate(from_version:int)->void:
@@ -150,7 +171,7 @@ func get_milestone_ids()->Array:
 	return _db.select_rows("Milestones", "", ["Id"])
 
 func get_task_binding_data(id:int)->Task.BindingData:
-	var query = """SELECT t.Id, mt.MilestoneID, t.Title 
+	var query = """SELECT t.Id, mt.MilestoneID, t.Title, t.Status
 					FROM Tasks t 
 					LEFT OUTER JOIN MilestoneTasks mt on t.id = mt.TaskID
 					WHERE t.id = %s""" % id
@@ -164,11 +185,12 @@ func get_task_binding_data(id:int)->Task.BindingData:
 	bd.task_id = row.Id
 	bd.milestone_id = row.MilestoneID if row.MilestoneID != null else -1
 	bd.title = row.Title
+	bd.status = row.Status
 	return bd
 
 
 func get_all_task_binding_data()->Array:
-	var query = """SELECT t.Id, mt.MilestoneID, t.Title 
+	var query = """SELECT t.Id, mt.MilestoneID, t.Title, t.Status
 					FROM Tasks t 
 					LEFT OUTER JOIN MilestoneTasks mt on t.id = mt.TaskID"""
 	_do_query(query)
@@ -182,19 +204,26 @@ func get_all_task_binding_data()->Array:
 		bd.task_id = row.Id
 		bd.milestone_id = row.MilestoneID if row.MilestoneID != null else -1
 		bd.title = row.Title
+		bd.status = row.Status
 		results.append(bd)
 	return results
 
 
 func commit_task(task:Task)->bool:
-	var query:String
+	if !task._unsaved_changes:
+		return true
+	
+	var values := {
+			"Title":task.name,
+			"Description": task.description.to_utf8(),
+			"Status": task.status
+		}
 	var is_insert := false
 	if task.id < 0:
-		var row := {"Title": task.name, "Description": task.description.to_utf8()}
-		_db.insert_row("Tasks", row)
+		_db.insert_row("Tasks", values)
 		is_insert = true
 	else:
-		_db.update_rows("Tasks", "Id=%s" % task.id, {"Title":task.name, "Description": task.description.to_utf8()})
+		_db.update_rows("Tasks", "Id=%s" % task.id, values)
 	
 	#_do_query(query)
 	if is_insert:
@@ -203,6 +232,9 @@ func commit_task(task:Task)->bool:
 
 
 func commit_milestone(ms:Milestone)->bool:
+	if !ms._unsaved_changes:
+		return true
+	
 	var query:String
 	var is_insert := false
 	if ms.id < 0:
@@ -225,6 +257,7 @@ func retrieve_task(task_id:int)->Task:
 	var task:Task = Task.new()
 	task.id = data.Id
 	task.name = data.Title
+	task.status = data.Status
 	var raw_bytes = data.get("Description", PoolByteArray())
 #	task.description = raw_bytes.get_string_from_utf8()
 	if raw_bytes is PoolByteArray:
@@ -262,3 +295,14 @@ func retrieve_all_milestone()->Array:
 		mss.append(ms)
 	
 	return mss
+
+func delete_task(id:int)->void:
+	link_task_to_milestone(id, -1)
+	var q:String = "DELETE FROM Tasks WHERE Id = %s" % id
+	_do_query(q)
+
+func delete_milestone(id:int)->void:
+	var q:String = "DELETE FROM MilestoneTasks WHERE MilestoneID = %s" % id
+	_do_query(q)
+	q = "DELETE FROM Milestones WHERE Id = %s" % id
+	_do_query(q)

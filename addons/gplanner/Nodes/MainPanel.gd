@@ -10,32 +10,42 @@ const Project := preload("res://addons/gplanner/DataHelpers/Project.gd")
 const TicketEditor := preload("res://addons/gplanner/Editors/TicketEditor.gd")
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
+const StatusEnum = preload("res://addons/gplanner/DataHelpers/StatusEnum.gd")
+const DataBind = preload("res://addons/gplanner/DataHelpers/DataBind.gd")
 
 # Scenes
 const group_scene := preload("res://addons/gplanner/GroupVBox.tscn")
 const ticket_editor := preload("res://addons/gplanner/Editors/TicketEditor.tscn")
 
+export var inspector_container_path:NodePath
+export var groups_container_path:NodePath
+export var open_project_popup_path:NodePath
+export var new_project_popup_path:NodePath
+export var new_project_lineedit_path:NodePath
+export var project_name_label_path:NodePath
+export var new_milestone_popup_path:NodePath
+export var new_milestone_name_edit_path:NodePath
+export var save_changes_dialog_path:NodePath
+export var task_backlog_container_path:NodePath
 
-# instance variables
-	# onready
-onready var inspector_container = $VSplitContainer/Body/Inspector
-onready var groups_container:VBoxContainer = $VSplitContainer/Body/TabContainer/Milestones
-onready var open_project_popup:PopupMenu = $PopupContainer/OpenProjectOptions
-onready var new_project_popup:AcceptDialog = $PopupContainer/NewProjectName
-onready var new_project_lineedit:LineEdit = $PopupContainer/NewProjectName/LineEdit
-onready var project_name_label:Label = $VSplitContainer/MenuStrip/ProjectNameLabel
-onready var new_milestone_popup:AcceptDialog = $PopupContainer/NewMilestoneName
-onready var new_milestone_name_edit:LineEdit = $PopupContainer/NewMilestoneName/LineEdit
-onready var save_changes_dialog = $PopupContainer/SaveUnsavedDialog
-onready var task_list_container:VBoxContainer = $VSplitContainer/Body/TabContainer/Tasks
+onready var inspector_container:MarginContainer = get_node(inspector_container_path)
+onready var groups_container:VBoxContainer = get_node(groups_container_path)
+onready var open_project_popup:PopupMenu = get_node(open_project_popup_path)
+onready var new_project_popup:AcceptDialog = get_node(new_project_popup_path)
+onready var new_project_lineedit:LineEdit = get_node(new_project_lineedit_path)
+onready var project_name_label:Label = get_node(project_name_label_path)
+onready var new_milestone_popup:AcceptDialog = get_node(new_milestone_popup_path)
+onready var new_milestone_name_edit:LineEdit = get_node(new_milestone_name_edit_path)
+onready var save_changes_dialog = get_node(save_changes_dialog_path)
+onready var task_backlog_container:VBoxContainer = get_node(task_backlog_container_path)
 
-	# vanilla
 var project:Project
 var ticket_editor_instance:TicketEditor
 var active_editor:Control
 var _post_save_action_stack := []
 var _action_stack_locked := false
 var _group_boxes := {}
+var _data_binds := {}
 
 func _ready() -> void:
 	Project.set_working_dir()
@@ -58,6 +68,11 @@ func _exit_tree() -> void:
 	if ticket_editor_instance != null:
 		ticket_editor_instance.queue_free()
 
+func _unhandled_key_input(event: InputEventKey) -> void:
+	if event.is_action_pressed("save_all") and project != null:
+		print("saving")
+		project.save_all()
+
 func _do_action_stack()->void:
 	if _action_stack_locked: 
 		return
@@ -68,6 +83,15 @@ func _do_action_stack()->void:
 		callv(action[0], action[1])
 	
 	_action_stack_locked = false
+
+func _update_task_name(new_name:String)->void:
+	pass
+
+func _update_task_milestoneID(new_id:int)->void:
+	pass
+
+func _update_task_status(task:Task)->void:
+	_refresh_task_list()
 
 func _close_project()->void:
 	if !project: 
@@ -84,8 +108,8 @@ func _close_project()->void:
 	
 	_set_inspector(null)
 	project_name_label.text = ""
-	for i in range(groups_container.get_child_count() - 1, 0, -1):
-		var child = groups_container.get_child(i)
+	var children := groups_container.get_children()
+	for child in children:
 		groups_container.remove_child(child)
 		child.free()
 	
@@ -106,30 +130,51 @@ func _load_project(name:String)->void:
 		_add_milestone(m)
 	
 	_refresh_task_list()
+	
+	project.connect("abandoned_task", self, "_on_task_abandoned")
+	project.connect("completed_task", self, "_on_task_completed")
+	project.connect("deleted_task", self, "_on_task_deleted")
+	project.connect("deleted_milestone", self, "_on_milestone_deleted")
+	project.connect("milestone_created", self, "_register_observer_milestone")
+	project.connect("task_opened", self, "_register_observer_task")
 
 func _refresh_task_list(only_clear:bool = false)->void:
-	var task_buttons = task_list_container.get_children()
+	var task_buttons = task_backlog_container.get_children()
 	for tb in task_buttons:
-		task_list_container.remove_child(tb)
+		task_backlog_container.remove_child(tb)
 		tb.queue_free()
 	
 	if only_clear: return
 	
 	for task_data in project.get_all_task_data():
+		if (task_data.milestone_id > 0 
+			or task_data.status == StatusEnum.Values.Abandoned 
+			or task_data.status == StatusEnum.Values.Completed):
+			continue
 		var task_button = Button.new()
-		task_list_container.add_child(task_button)
+		task_backlog_container.add_child(task_button)
 		task_button.text = task_data.title
 		task_button.clip_text = true
 		task_button.connect("pressed", self, "_handle_task_click", [task_data.task_id])
+		
+		var key := [task_data.task_id, Task.Fields.Name, "text"]
+		var data_bind:DataBind = _data_binds.get(key, DataBind.new())
+		if len(data_bind.targets) == 0:
+			_data_binds[key] = data_bind
+			data_bind.property = "text"
+		data_bind.targets.append(task_button)
 
 func _add_milestone(milestone:Milestone)->void:
 	var group_box:GroupBox = group_scene.instance()
 	groups_container.add_child(group_box)
-	group_box.load_milestone(project, milestone.id)
+	group_box.load_milestone(project, milestone.id, _data_binds)
 	group_box.shrink()
 	group_box.connect("item_clicked", self, "_handle_task_click")
 	_group_boxes[milestone.id] = group_box
 	ticket_editor_instance.update_milestone_options(milestone)
+
+func _remove_milestone(id:int)->void:
+	pass
 
 func _set_inspector(type)->void:
 	if type == null and active_editor != null:
@@ -233,9 +278,9 @@ func _on_task_grouping_changed(task_id:int, old_group_id:int, new_group_id:int)-
 	#HACK: this whole method is a hack. Instead of smartly updating only what changed, 
 	# we just nuke the things and have them reload. (The nuking happens at the top of load_ms
 	if old_groupbox:
-		old_groupbox.load_milestone(project, old_ms.id)
+		old_groupbox.load_milestone(project, old_ms.id, _data_binds)
 	if new_groupbox:
-		new_groupbox.load_milestone(project, new_ms.id)
+		new_groupbox.load_milestone(project, new_ms.id, _data_binds)
 	project.save_all()
 
 func _on_editied_task_title_change(task_id:int, new_title:String)->void:
@@ -251,4 +296,43 @@ func _on_editied_task_saved(task_id:int)->void:
 		return
 	var group_box:GroupBox = _group_boxes[milestone.id]
 	if group_box.is_expanded:
-		group_box.load_milestone(project, milestone.id)
+		group_box.load_milestone(project, milestone.id, _data_binds)
+
+
+func _on_task_abandoned(id:int)->void:
+	_refresh_task_list()
+	
+
+func _on_task_completed(id:int)->void:
+	_refresh_task_list()
+
+
+func _on_task_deleted(id:int)->void:
+	_refresh_task_list()
+	
+
+func _on_milestone_deleted(id:int)->void:
+	_remove_milestone(id)
+	_refresh_task_list()
+
+
+func _register_observer_milestone(ms:Milestone)->void:
+	ms.connect("changed", self, "_on_milestone_changed", [ms])
+
+
+func _register_observer_task(task:Task)->void:
+	task.connect("changed", self, "_on_task_changed", [task])
+
+
+func _on_milestone_changed(field:int, value, ms:Milestone)->void:
+	pass
+
+# Honestly, probably just use an event bus
+func _on_task_changed(field:int, value, task:Task)->void:
+	var key:Array
+	match field:
+		Task.Fields.Name:
+			key = [task.id, Task.Fields.Name, "text"]
+	
+	if key in _data_binds:
+		_data_binds[key].update(value)

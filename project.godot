@@ -22,6 +22,14 @@ config/icon="res://icon.png"
 
 enabled=PoolStringArray( "res://addons/Todo_Manager/plugin.cfg", "res://addons/godot-plugin-refresher/plugin.cfg", "res://addons/godot-sqlite/plugin.cfg", "res://addons/gplanner/plugin.cfg" )
 
+[input]
+
+save_all={
+"deadzone": 0.5,
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":true,"meta":false,"command":true,"pressed":false,"scancode":83,"physical_scancode":0,"unicode":0,"echo":false,"script":null)
+ ]
+}
+
 [rendering]
 
 environment/default_environment="res://default_env.tres"

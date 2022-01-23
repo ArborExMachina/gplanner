@@ -3,6 +3,7 @@ tool
 
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
+const DataBind = preload("res://addons/gplanner/DataHelpers/DataBind.gd")
 
 signal item_clicked(task_id)
 
@@ -13,8 +14,7 @@ var _milestone:Milestone
 onready var member_box = $MemberArea
 onready var vbox = $MemberArea/VBoxContainer
 
-func load_milestone(project, milestone_id:int)->void:
-	
+func load_milestone(project, milestone_id:int, data_binds:Dictionary)->void:
 	var children = vbox.get_children()
 	for child in children:
 		vbox.remove_child(child)
@@ -31,6 +31,13 @@ func load_milestone(project, milestone_id:int)->void:
 		task_button.focus_mode = Control.FOCUS_NONE
 		task_button.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
 		task_button.align = Button.ALIGN_LEFT
+		
+		var key = [task_id, Task.Fields.Name, "text"]
+		var data_bind:DataBind = data_binds.get(key, DataBind.new())
+		if len(data_bind.targets) == 0:
+			data_binds[key] = data_bind
+		data_bind.targets.append(task_button)
+		data_bind.property = "text"
 
 	var norm_sb:StyleBoxFlat = StyleBoxFlat.new()
 	norm_sb.bg_color = _milestone._color
