@@ -11,7 +11,7 @@ const TicketEditor := preload("res://addons/gplanner/Editors/TicketEditor.gd")
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 const StatusEnum = preload("res://addons/gplanner/DataHelpers/StatusEnum.gd")
-const DataBind = preload("res://addons/gplanner/DataHelpers/DataBind.gd")
+const DataBinder = preload("res://addons/gplanner/DataHelpers/DataBindCollection.gd")
 
 # Scenes
 const group_scene := preload("res://addons/gplanner/GroupVBox.tscn")
@@ -27,6 +27,10 @@ export var new_milestone_popup_path:NodePath
 export var new_milestone_name_edit_path:NodePath
 export var save_changes_dialog_path:NodePath
 export var task_backlog_container_path:NodePath
+export var milestones_show_hidden_tasks_checkbox_path:NodePath
+export var save_status_path:NodePath
+export var saved_icon:Texture
+export var unsaved_icon:Texture
 
 onready var inspector_container:MarginContainer = get_node(inspector_container_path)
 onready var groups_container:VBoxContainer = get_node(groups_container_path)
@@ -38,6 +42,8 @@ onready var new_milestone_popup:AcceptDialog = get_node(new_milestone_popup_path
 onready var new_milestone_name_edit:LineEdit = get_node(new_milestone_name_edit_path)
 onready var save_changes_dialog = get_node(save_changes_dialog_path)
 onready var task_backlog_container:VBoxContainer = get_node(task_backlog_container_path)
+onready var save_status:TextureButton = get_node(save_status_path)
+onready var milestones_show_hidden_tasks:CheckBox = get_node(milestones_show_hidden_tasks_checkbox_path)
 
 var project:Project
 var ticket_editor_instance:TicketEditor
@@ -45,14 +51,14 @@ var active_editor:Control
 var _post_save_action_stack := []
 var _action_stack_locked := false
 var _group_boxes := {}
-var _data_binds := {}
+var _data_binder:DataBinder
+var _milestones_show_hidden_tasks:bool
 
 func _ready() -> void:
 	Project.set_working_dir()
 	ticket_editor_instance = ticket_editor.instance()
-	ticket_editor_instance.connect("milestone_grouping_change", self, "_on_task_grouping_changed")
-	ticket_editor_instance.connect("title_changed", self, "_on_editied_task_title_change")
 	ticket_editor_instance.connect("task_changes_commited", self, "_on_editied_task_saved")
+	milestones_show_hidden_tasks.connect("toggled", self, "_on_ms_show_hidden_tasks_changed")
 	
 	# signal generators
 	var project_menu_popup = $VSplitContainer/MenuStrip/ProjectMenu.get_popup()
@@ -69,9 +75,8 @@ func _exit_tree() -> void:
 		ticket_editor_instance.queue_free()
 
 func _unhandled_key_input(event: InputEventKey) -> void:
-	if event.is_action_pressed("save_all") and project != null:
-		print("saving")
-		project.save_all()
+	if event.is_action_pressed("save_all"):
+		_full_save()
 
 func _do_action_stack()->void:
 	if _action_stack_locked: 
@@ -114,6 +119,7 @@ func _close_project()->void:
 		child.free()
 	
 	_refresh_task_list(true)
+	_data_binder = null
 	
 #	_do_action_stack()
 
@@ -122,6 +128,7 @@ func _load_project(name:String)->void:
 		_post_save_action_stack.append(["_load_project", [name]])
 		_close_project()
 		return
+	_data_binder = DataBinder.new()
 	project = Project.new()
 	project.open(name)
 	project_name_label.text = name
@@ -137,14 +144,26 @@ func _load_project(name:String)->void:
 	project.connect("deleted_milestone", self, "_on_milestone_deleted")
 	project.connect("milestone_created", self, "_register_observer_milestone")
 	project.connect("task_opened", self, "_register_observer_task")
+	project.connect("task_assigned_to_group", self, "_on_task_grouping_changed")
+	project.connect("unsaved_status_changed", self, "_on_project_save_status_changed")
+
+func _full_save()->void:
+	if project == null or project.is_saved_since_changes():
+		print("skipping full save, nothing to commit")
+		return
+	print("saving")
+	project.save_all()
+	_refresh_task_list()
 
 func _refresh_task_list(only_clear:bool = false)->void:
 	var task_buttons = task_backlog_container.get_children()
 	for tb in task_buttons:
 		task_backlog_container.remove_child(tb)
+		_data_binder.unbind_target(tb)
 		tb.queue_free()
 	
-	if only_clear: return
+	if only_clear: 
+		return
 	
 	for task_data in project.get_all_task_data():
 		if (task_data.milestone_id > 0 
@@ -156,18 +175,13 @@ func _refresh_task_list(only_clear:bool = false)->void:
 		task_button.text = task_data.title
 		task_button.clip_text = true
 		task_button.connect("pressed", self, "_handle_task_click", [task_data.task_id])
-		
-		var key := [task_data.task_id, Task.Fields.Name, "text"]
-		var data_bind:DataBind = _data_binds.get(key, DataBind.new())
-		if len(data_bind.targets) == 0:
-			_data_binds[key] = data_bind
-			data_bind.property = "text"
-		data_bind.targets.append(task_button)
+		_data_binder.bind(DataBinder.TaskType, task_data.task_id, Task.Fields.Name, task_button, "text")
+
 
 func _add_milestone(milestone:Milestone)->void:
 	var group_box:GroupBox = group_scene.instance()
 	groups_container.add_child(group_box)
-	group_box.load_milestone(project, milestone.id, _data_binds)
+	group_box.load_milestone(project, milestone.id, _data_binder, _milestones_show_hidden_tasks)
 	group_box.shrink()
 	group_box.connect("item_clicked", self, "_handle_task_click")
 	_group_boxes[milestone.id] = group_box
@@ -275,17 +289,13 @@ func _on_task_grouping_changed(task_id:int, old_group_id:int, new_group_id:int)-
 	var old_groupbox: GroupBox = _group_boxes[old_group_id] if old_ms else null
 	var new_groupbox: GroupBox = _group_boxes[new_group_id] if new_ms else null
 	
-	#HACK: this whole method is a hack. Instead of smartly updating only what changed, 
-	# we just nuke the things and have them reload. (The nuking happens at the top of load_ms
 	if old_groupbox:
-		old_groupbox.load_milestone(project, old_ms.id, _data_binds)
+		old_groupbox.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
 	if new_groupbox:
-		new_groupbox.load_milestone(project, new_ms.id, _data_binds)
+		new_groupbox.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
 	project.save_all()
+	_refresh_task_list()
 
-func _on_editied_task_title_change(task_id:int, new_title:String)->void:
-	#TODO: if you're feeling like a refactor, allow all the places you display a tasks's title to update in real time
-	pass 
 
 func _on_editied_task_saved(task_id:int)->void:
 	#HACK: no smart updates, just nukes
@@ -296,19 +306,28 @@ func _on_editied_task_saved(task_id:int)->void:
 		return
 	var group_box:GroupBox = _group_boxes[milestone.id]
 	if group_box.is_expanded:
-		group_box.load_milestone(project, milestone.id, _data_binds)
+		group_box.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
 
 
-func _on_task_abandoned(id:int)->void:
-	_refresh_task_list()
+func _on_task_abandoned(tid:int, msid:int)->void:
+	if msid < 0:
+		_refresh_task_list()
+	else:
+		_group_boxes[msid].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
 	
 
-func _on_task_completed(id:int)->void:
-	_refresh_task_list()
+func _on_task_completed(id:int, msid:int)->void:
+	if msid < 0:
+		_refresh_task_list()
+	else:
+		_group_boxes[msid].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
 
 
-func _on_task_deleted(id:int)->void:
-	_refresh_task_list()
+func _on_task_deleted(id:int, msid:int)->void:
+	if msid < 0:
+		_refresh_task_list()
+	else:
+		_group_boxes[msid].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
 	
 
 func _on_milestone_deleted(id:int)->void:
@@ -327,12 +346,29 @@ func _register_observer_task(task:Task)->void:
 func _on_milestone_changed(field:int, value, ms:Milestone)->void:
 	pass
 
-# Honestly, probably just use an event bus
+func _on_project_save_status_changed(is_unsaved:bool)->void:
+	save_status.texture_normal = unsaved_icon if is_unsaved else saved_icon
+
 func _on_task_changed(field:int, value, task:Task)->void:
-	var key:Array
+	var key = null
 	match field:
 		Task.Fields.Name:
-			key = [task.id, Task.Fields.Name, "text"]
-	
-	if key in _data_binds:
-		_data_binds[key].update(value)
+			_data_binder.publish_change(DataBinder.TaskType, task.id, Task.Fields.Name, value)
+		Task.Fields.Priority:
+			var task_group_info:Task.BindingData = project.get_task_data(task.id)
+			if task_group_info.milestone_id > 0:
+				_group_boxes[task_group_info.milestone_id].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+			else:
+				_refresh_task_list()
+
+
+func _on_ProjectSaveStatus_pressed() -> void:
+	if project == null or project.is_saved_since_changes():
+		return
+	_full_save()
+
+func _on_ms_show_hidden_tasks_changed(new_value:bool)->void:
+	_milestones_show_hidden_tasks = new_value
+	for group_box in _group_boxes.values():
+		group_box.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		

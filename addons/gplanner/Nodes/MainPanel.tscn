@@ -1,6 +1,8 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://addons/gplanner/Nodes/MainPanel.gd" type="Script" id=1]
+[ext_resource path="res://addons/gplanner/Assets/checked.png" type="Texture" id=2]
+[ext_resource path="res://addons/gplanner/Assets/diskette.png" type="Texture" id=3]
 
 [sub_resource type="GDScript" id=1]
 script/source = "extends PopupMenu
@@ -42,6 +44,10 @@ new_milestone_popup_path = NodePath("PopupContainer/NewMilestoneName")
 new_milestone_name_edit_path = NodePath("PopupContainer/NewMilestoneName/LineEdit")
 save_changes_dialog_path = NodePath("PopupContainer/SaveUnsavedDialog")
 task_backlog_container_path = NodePath("VSplitContainer/Body/TabContainer/Task Backlog")
+milestones_show_hidden_tasks_checkbox_path = NodePath("VSplitContainer/Body/TabContainer/Milestones/PresentationOptions/ShowInactiveTasks/CheckBox")
+save_status_path = NodePath("VSplitContainer/MenuStrip/ProjectSaveStatus")
+saved_icon = ExtResource( 2 )
+unsaved_icon = ExtResource( 3 )
 
 [node name="VSplitContainer" type="VSplitContainer" parent="."]
 margin_left = 7.0
@@ -73,6 +79,15 @@ margin_top = 3.0
 margin_right = 147.0
 margin_bottom = 17.0
 
+[node name="ProjectSaveStatus" type="TextureButton" parent="VSplitContainer/MenuStrip"]
+margin_left = 151.0
+margin_right = 171.0
+margin_bottom = 20.0
+rect_min_size = Vector2( 20, 20 )
+texture_normal = ExtResource( 2 )
+expand = true
+stretch_mode = 4
+
 [node name="Body" type="HSplitContainer" parent="VSplitContainer"]
 margin_top = 32.0
 margin_right = 1010.0
@@ -103,25 +118,25 @@ margin_bottom = 24.0
 
 [node name="Label" type="Label" parent="VSplitContainer/Body/TabContainer/Milestones/PresentationOptions/ShowInactiveTasks"]
 margin_top = 5.0
-margin_right = 128.0
+margin_right = 124.0
 margin_bottom = 19.0
-text = "Show inactive tasks:"
+text = "Show inactive tasks"
 
 [node name="CheckBox" type="CheckBox" parent="VSplitContainer/Body/TabContainer/Milestones/PresentationOptions/ShowInactiveTasks"]
-margin_left = 132.0
-margin_right = 156.0
+margin_left = 128.0
+margin_right = 152.0
 margin_bottom = 24.0
 
-[node name="NewMilestoneButton" type="Button" parent="VSplitContainer/Body/TabContainer/Milestones"]
+[node name="MilestoneGroupContainer" type="VBoxContainer" parent="VSplitContainer/Body/TabContainer/Milestones"]
 margin_top = 28.0
 margin_right = 272.0
-margin_bottom = 48.0
-text = "+"
+margin_bottom = 28.0
 
-[node name="MilestoneGroupContainer" type="VBoxContainer" parent="VSplitContainer/Body/TabContainer/Milestones"]
-margin_top = 52.0
+[node name="NewMilestoneButton" type="Button" parent="VSplitContainer/Body/TabContainer/Milestones"]
+margin_top = 32.0
 margin_right = 272.0
 margin_bottom = 52.0
+text = "+"
 
 [node name="Task Backlog" type="VBoxContainer" parent="VSplitContainer/Body/TabContainer"]
 visible = false
@@ -211,6 +226,7 @@ dialog_text = "You must save before preforming this action.
 Save now?"
 
 [connection signal="pressed" from="VSplitContainer/MenuStrip/NewTicket" to="." method="_on_NewTicket_pressed"]
+[connection signal="pressed" from="VSplitContainer/MenuStrip/ProjectSaveStatus" to="." method="_on_ProjectSaveStatus_pressed"]
 [connection signal="pressed" from="VSplitContainer/Body/TabContainer/Milestones/NewMilestoneButton" to="." method="_on_NewMilestoneButton_pressed"]
 [connection signal="index_pressed" from="PopupContainer/OpenProjectOptions" to="." method="_on_OpenProjectOptions_index_pressed"]
 [connection signal="pressed" from="PopupContainer/OpenProjectOptions/Button" to="PopupContainer/OpenProjectOptions" method="_on_Close_pressed"]

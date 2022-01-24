@@ -51,6 +51,7 @@ func _init_db()->void:
 		"Title": {"data_type": "TEXT", "not_null": true},
 		"Description": {"data_type": "BLOB"},
 		"Status": {"data_type": "int", "not_null": true, "default": 0},
+		"Priority": {"data_type": "int", "not_null": true, "default": 0}
 	})
 	_db.create_table("TaskHierarchy", {
 		"ParentId": {"data_type": "int", "not_null":true, "foreign_key": "Tasks.Id"},
@@ -70,19 +71,41 @@ func link_task_to_milestone(task_id:int, ms_id:int)->void:
 	
 	var query:String = "DELETE FROM MilestoneTasks WHERE TaskID = %s" % task_id
 	_do_query(query)
-	print(_db.query_result)
 	
 	if ms_id < 0:
 		return
 	
 	query = "INSERT INTO MilestoneTasks (MilestoneID, TaskID) VALUES (%s, %s)" % [ms_id, task_id]
 	_do_query(query)
-	print(_db.query_result)
 
 
 func _do_query(query:String)->void:
 	if !_db.query(query):
 		push_error("%s %s" % [query, _db.error_message])
+
+func _get_task_binding_data(where, orderby)->Array:
+	var query = """SELECT Id, MilestoneID, Title, Status, Priority
+					FROM Tasks
+					LEFT OUTER JOIN MilestoneTasks on Id = TaskID"""
+	if where != null and where is String:
+		query += "\n%s" % where
+	if orderby != null and orderby is String:
+		query += "\n%s" % orderby
+	_do_query(query)
+	
+	if _db.query_result == null or len(_db.query_result) < 1:
+		return []
+	
+	var results := []
+	for row in _db.query_result:
+		var bd := Task.BindingData.new()
+		bd.task_id = row.Id
+		bd.milestone_id = row.MilestoneID if row.MilestoneID != null else -1
+		bd.title = row.Title
+		bd.status = row.Status
+		bd.priority = row.Priority
+		results.append(bd)
+	return results
 
 
 func open(source_name:String)->bool:
@@ -121,20 +144,6 @@ func get_db_version()->int:
 		push_error("failed to get db version")
 	return int(_db.query_result[0].Value)
 
-# untested, probably not needed anyways, but here for the query if it's ever useful
-#func get_task_backlog_ids()->Array:
-#	var ids := []
-#	var q:String = """SELECT t.Id 
-#					  FROM Tasks t
-#					  LEFT OUTER JOIN MilestoneTasks mt
-#					  ON t.ID = mt.TaskID
-#					  WHERE (t.Status = 0 OR t.Status = 1 OR t.Status = 2) AND mt.MilestoneID > -1; 
-#"""
-#	_do_query(q)
-#	for row in _db.query_result:
-#		ids.append(row.Id)
-#	return ids
-
 
 func migrate(from_version:int)->void:
 	print("migrating db versions")
@@ -171,42 +180,26 @@ func get_milestone_ids()->Array:
 	return _db.select_rows("Milestones", "", ["Id"])
 
 func get_task_binding_data(id:int)->Task.BindingData:
-	var query = """SELECT t.Id, mt.MilestoneID, t.Title, t.Status
-					FROM Tasks t 
-					LEFT OUTER JOIN MilestoneTasks mt on t.id = mt.TaskID
-					WHERE t.id = %s""" % id
-	_do_query(query)
-	
-	if _db.query_result == null or len(_db.query_result) != 1:
+	var arr:Array = _get_task_binding_data("WHERE id = %s" % id, null)
+	if len(arr) == 1:
+		return arr[0]
+	else:
 		return null
-	
-	var row = _db.query_result[0]
-	var bd := Task.BindingData.new()
-	bd.task_id = row.Id
-	bd.milestone_id = row.MilestoneID if row.MilestoneID != null else -1
-	bd.title = row.Title
-	bd.status = row.Status
-	return bd
+
+func get_milestones_task_binding_data(ms_id:int)->Array:
+	return _get_task_binding_data("WHERE MilestoneID = %s" % ms_id, "ORDER BY Priority DESC")
+
+func get_all_task_binding_data(order_by_priority:bool = true)->Array:
+	return _get_task_binding_data(null, "ORDER BY Priority DESC" if order_by_priority else null)
 
 
-func get_all_task_binding_data()->Array:
-	var query = """SELECT t.Id, mt.MilestoneID, t.Title, t.Status
-					FROM Tasks t 
-					LEFT OUTER JOIN MilestoneTasks mt on t.id = mt.TaskID"""
-	_do_query(query)
-	
-	if _db.query_result == null or len(_db.query_result) < 1:
-		return []
-	
-	var results := []
-	for row in _db.query_result:
-		var bd := Task.BindingData.new()
-		bd.task_id = row.Id
-		bd.milestone_id = row.MilestoneID if row.MilestoneID != null else -1
-		bd.title = row.Title
-		bd.status = row.Status
-		results.append(bd)
-	return results
+func get_milestone_task_ids(ms_id)->Array:
+	var task_ids := []
+	var q:String = "SELECT TaskID FROM MilestoneTasks WHERE MilestoneID = %s" % ms_id
+	_do_query(q)
+	for row in q:
+		task_ids.append(row.TaskID)
+	return task_ids
 
 
 func commit_task(task:Task)->bool:
@@ -216,7 +209,8 @@ func commit_task(task:Task)->bool:
 	var values := {
 			"Title":task.name,
 			"Description": task.description.to_utf8(),
-			"Status": task.status
+			"Status": task.status,
+			"Priority": task.priority
 		}
 	var is_insert := false
 	if task.id < 0:
@@ -228,6 +222,8 @@ func commit_task(task:Task)->bool:
 	#_do_query(query)
 	if is_insert:
 		task.id = _db.last_insert_rowid
+	
+	task._unsaved_changes = false
 	return true
 
 
@@ -246,6 +242,8 @@ func commit_milestone(ms:Milestone)->bool:
 	_do_query(query)
 	if is_insert:
 		ms.id = _db.last_insert_rowid
+	
+	ms._unsaved_changes = false
 	return true
 
 func retrieve_task(task_id:int)->Task:
@@ -258,6 +256,7 @@ func retrieve_task(task_id:int)->Task:
 	task.id = data.Id
 	task.name = data.Title
 	task.status = data.Status
+	task.priority = data.Priority
 	var raw_bytes = data.get("Description", PoolByteArray())
 #	task.description = raw_bytes.get_string_from_utf8()
 	if raw_bytes is PoolByteArray:
@@ -268,10 +267,6 @@ func retrieve_task(task_id:int)->Task:
 		for i in jpr.result:
 			bytes.append(int(i))
 		task.description = bytes.get_string_from_utf8()
-	
-	results = _db.select_rows("MilestoneTasks", "TaskID = %s" % task_id, ["MilestoneID"])
-	if results != null and len(results) == 1:
-		task.milestone_id = results[0].MilestoneID
 		
 	task._unsaved_changes = false
 	return task
@@ -285,12 +280,7 @@ func retrieve_all_milestone()->Array:
 		ms.id = row.Id
 		ms.milestone_name = row.Name
 		var cfs = row.Color.split(",")
-		ms._color = Color(float(cfs[0]), float(cfs[1]), float(cfs[2]), float(cfs[3]))
-		
-		var task_link_results = _db.select_rows("MilestoneTasks", "MilestoneID = %s" % ms.id, ["TaskID"])
-		for task_link_row in task_link_results:
-			ms.add_task(task_link_row.TaskID)
-		
+		ms._color = Color(float(cfs[0]), float(cfs[1]), float(cfs[2]), float(cfs[3]))		
 		ms._unsaved_changes = false
 		mss.append(ms)
 	

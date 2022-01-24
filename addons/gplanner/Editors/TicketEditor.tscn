@@ -17,31 +17,44 @@ script = ExtResource( 2 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
-_task_name_path = NodePath("NameAndMilestone/Name")
+_task_name_path = NodePath("TicketMainInfo/Name")
 _description_path = NodePath("Description")
 _blockedby_linklist_path = NodePath("BlockedByList")
 _blocks_linklist_path = NodePath("BlockingList")
-_milestone_menu_button_path = NodePath("NameAndMilestone/MilestoneClassification")
+_milestone_menu_button_path = NodePath("TicketMainInfo/MilestoneClassification")
 _status_menu_button_path = NodePath("Status/StatusMenuButton")
+_priority_spinbox_path = NodePath("TicketMainInfo/PriorotyBox")
 
-[node name="NameAndMilestone" type="HBoxContainer" parent="."]
+[node name="TicketMainInfo" type="HBoxContainer" parent="."]
 margin_right = 1024.0
 margin_bottom = 24.0
 
-[node name="Name" type="LineEdit" parent="NameAndMilestone"]
-margin_right = 94.0
+[node name="Name" type="LineEdit" parent="TicketMainInfo"]
+margin_right = 300.0
 margin_bottom = 24.0
+rect_min_size = Vector2( 300, 0 )
 text = "Ticket Name"
 align = 1
 expand_to_text_length = true
 
-[node name="MilestoneClassification" type="MenuButton" parent="NameAndMilestone"]
-margin_left = 98.0
-margin_right = 174.0
+[node name="MilestoneClassification" type="MenuButton" parent="TicketMainInfo"]
+margin_left = 304.0
+margin_right = 380.0
 margin_bottom = 24.0
 text = "Milestone"
 flat = false
 items = [ "Item 0", null, 0, false, false, -1, 0, null, "", false ]
+
+[node name="PriorotyBox" type="SpinBox" parent="TicketMainInfo"]
+margin_left = 384.0
+margin_right = 494.0
+margin_bottom = 24.0
+rect_min_size = Vector2( 110, 0 )
+min_value = -1.0
+max_value = 10000.0
+value = -1.0
+allow_greater = true
+prefix = "Priority"
 
 [node name="Status" type="HBoxContainer" parent="."]
 margin_top = 28.0
@@ -109,8 +122,9 @@ margin_bottom = 20.0
 custom_colors/font_color = Color( 0.435294, 0, 0, 1 )
 text = "Delete"
 
-[connection signal="text_changed" from="NameAndMilestone/Name" to="." method="_on_Name_text_changed"]
-[connection signal="text_entered" from="NameAndMilestone/Name" to="." method="_on_Name_text_entered"]
+[connection signal="text_changed" from="TicketMainInfo/Name" to="." method="_on_Name_text_changed"]
+[connection signal="text_entered" from="TicketMainInfo/Name" to="." method="_on_Name_text_entered"]
+[connection signal="value_changed" from="TicketMainInfo/PriorotyBox" to="." method="_on_PriorityBox_value_changed"]
 [connection signal="text_changed" from="Description" to="." method="_on_Description_text_changed"]
 [connection signal="pressed" from="CompletionActions/CompleteButton" to="." method="_on_CompleteButton_pressed"]
 [connection signal="pressed" from="CompletionActions/AbandonButton" to="." method="_on_AbandonButton_pressed"]
