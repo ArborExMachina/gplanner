@@ -28,7 +28,8 @@ class SourceBind:
 		for i in range(len(_targets)):
 			var target:Object = _targets[i]
 			var property:String = _properties[i]
-			target.set(property, new_value)
+			if is_instance_valid(target):
+				target.set(property, new_value)
 
 var _source_binds := {}
 var _bindkeys := {}

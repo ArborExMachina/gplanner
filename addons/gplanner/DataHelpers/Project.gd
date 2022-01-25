@@ -17,7 +17,7 @@ const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 const TaskData = preload("res://addons/gplanner/DataHelpers/TaskData.gd")
 const DataSource = preload("res://addons/gplanner/DataHelpers/DataSource.gd")
-const StatusEnum = preload("res://addons/gplanner/DataHelpers/StatusEnum.gd")
+const StatusDef = preload("res://addons/gplanner/DataHelpers/StatusDef.gd")
 
 var _dsource:DataSource
 var _unsaved_changes:bool = false
@@ -199,16 +199,16 @@ func is_saved_since_changes() -> bool:
 
 func complete_task(id:int, ms_id:int=-1)->void:
 	var task:Task = open_task(id)
-	task.status = StatusEnum.Values.Completed
-	task.priority = StatusEnum.completed_task_priority
+	task.status = StatusDef.Values.Completed
+	task.priority = StatusDef.completed_task_priority
 	_dsource.commit_task(task)
 	emit_signal("completed_task", id, ms_id)
 
 
 func abandon_task(id:int, ms_id:int=-1)->void:
 	var task:Task = open_task(id)
-	task.status = StatusEnum.Values.Abandoned
-	task.priority = StatusEnum.abandoned_task_priority
+	task.status = StatusDef.Values.Abandoned
+	task.priority = StatusDef.abandoned_task_priority
 	_dsource.commit_task(task)
 	emit_signal("abandoned_task", id, ms_id)
 

@@ -10,11 +10,13 @@ const LinkList = preload("res://addons/gplanner/Widgets/LinkList.gd")
 #const Project = preload("res://addons/gplanner/DataHelpers/Project.gd") cyclic reference D:<
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
-const StatusEnum = preload("res://addons/gplanner/DataHelpers/StatusEnum.gd")
+const StatusDef = preload("res://addons/gplanner/DataHelpers/StatusDef.gd")
+const PIMenuButton = preload("res://addons/gplanner/Widgets/PerItemColorPopupMenu/PerItemColorMenuButton.gd")
 
 const ungrouped_name = "Backlog"
 const ungrouped_id = -1
 
+export(String,FILE) var _label_icon_path:String
 export(NodePath) var _task_name_path
 export(NodePath) var _description_path
 export(NodePath) var _blockedby_linklist_path
@@ -27,11 +29,11 @@ onready var _task_name = get_node(_task_name_path) as LineEdit
 onready var _description = get_node(_description_path) as TextEdit
 onready var _blockedby_linklist = get_node(_blockedby_linklist_path) as LinkList
 onready var _blocks_linklist = get_node(_blocks_linklist_path) as LinkList
-onready var _milestone_menu_button = get_node(_milestone_menu_button_path) as MenuButton
-onready var _status_menu_button = get_node(_status_menu_button_path) as MenuButton
+onready var _milestone_menu_button:PIMenuButton = get_node(_milestone_menu_button_path)
+onready var _status_menu_button:PIMenuButton = get_node(_status_menu_button_path)
 onready var _priority_spinbox:SpinBox = get_node(_priority_spinbox_path) as SpinBox
-onready var _milestone_menu:Popup = _milestone_menu_button.get_popup()
-onready var _status_menu:PopupMenu = _status_menu_button.get_popup()
+onready var _milestone_menu:PIMenuButton.PerItemPopupMenu = _milestone_menu_button.get_popup()
+onready var _status_menu:PIMenuButton.PerItemPopupMenu = _status_menu_button.get_popup()
 
 var _project = null
 var _task:Task = null
@@ -46,7 +48,9 @@ var _task_milestone_id:int
 func _ready() -> void:
 	_milestone_menu.connect("index_pressed", self, "_on_milestone_clicked")
 	_status_menu.connect("index_pressed", self, "_on_status_clicked")
-
+	for status in StatusDef.Values:
+		var id:int = StatusDef.Values[status]
+		_status_menu.add_colored_item(null, status, StatusDef.Colors[id], id)
 
 func _process(delta: float) -> void:
 	if !_needs_save or !_project or !_task:
@@ -80,28 +84,37 @@ func load_ticket(project, task_id:int)->bool:
 	
 	_task_name.placeholder_text = "enter a title"
 	var current_milestone = project.get_tasks_milestone(task_id)
-	if current_milestone != null:
-		_milestone_menu_button.text = current_milestone.milestone_name
-		_task_milestone_id = current_milestone.id
-	else:
-		_milestone_menu_button.text = ungrouped_name
-		_task_milestone_id = -1
 	_task_name.text = _task.name
 	_description.text = _task.description
 	_priority_spinbox.value = _task.priority
-	_status_menu_button.text = StatusEnum.Values.keys()[_task.status]
+	_status_menu_button.set_selected(_task.status)
+	var i:int = 0
+	var selected:int = 0
 	for ms in project.get_milestones():
 		ms = ms as Milestone
-		_milestone_menu.add_item(ms.milestone_name, ms.id)
-	_milestone_menu.add_item(ungrouped_name)
+		var tex:StreamTexture = load(_label_icon_path) as StreamTexture
+		_milestone_menu.add_colored_item(tex, ms.milestone_name, ms._color, ms.id)
+		i += 1
+	_milestone_menu.add_colored_item(null, ungrouped_name, Color.gray, ungrouped_id)
+	
+	if current_milestone != null:
+		_task_milestone_id = current_milestone.id
+		var index = _milestone_menu.get_item_index(_task_milestone_id)
+		_milestone_menu_button.set_selected(index)
+	else:
+		_milestone_menu_button.text = ungrouped_name
+		_task_milestone_id = -1
+		_milestone_menu_button.self_modulate = Color(1,1,1)
 	
 	_supress_ui_change_events = false
 	return true
 
 
 func update_milestone_options(new_milestone:Milestone)->void:
-	if !_milestone_menu: return
-	_milestone_menu.add_item(new_milestone.milestone_name, new_milestone.id)
+	if !_milestone_menu: 
+		return
+	var tex:StreamTexture = load(_label_icon_path) as StreamTexture
+	_milestone_menu.add_icon_item(tex, new_milestone.milestone_name, new_milestone.id)
 
 
 func _queue_save()->void:
@@ -116,7 +129,8 @@ func _clear()->void:
 	_task_name.text = ""
 	_task_name.placeholder_text = "select a task to continue"
 	_description.text = ""
-	_milestone_menu.clear()
+	if _milestone_menu:
+		_milestone_menu.clear()
 	_milestone_menu_button.text = ""
 	_task_milestone_id = -1
 	_priority_spinbox.value = 0
@@ -150,8 +164,8 @@ func _complete_task()->void:
 	_project.complete_task(_task.id, _task_milestone_id)
 	
 	_supress_ui_change_events = true
-	_status_menu_button.text = StatusEnum.Values.keys()[StatusEnum.Values.Completed]
-	_priority_spinbox.value = StatusEnum.completed_task_priority
+	_status_menu_button.set_selected(StatusDef.Values.Completed)
+	_priority_spinbox.value = StatusDef.completed_task_priority
 	_supress_ui_change_events = false
 
 func _abandon_task()->void:
@@ -159,8 +173,8 @@ func _abandon_task()->void:
 	_project.abandon_task(_task.id, _task_milestone_id)
 	
 	_supress_ui_change_events = true
-	_status_menu_button.text = StatusEnum.Values.keys()[StatusEnum.Values.Abandoned]
-	_priority_spinbox.value = StatusEnum.completed_task_priority
+	_status_menu_button.set_selected(StatusDef.Values.Abandoned)
+	_priority_spinbox.value = StatusDef.completed_task_priority
 	_supress_ui_change_events = false
 
 
@@ -193,9 +207,9 @@ func _on_status_clicked(index:int)->void:
 	_status_menu_button.text = _status_menu.get_item_text(status_id)
 	_task.status = status_id
 	match status_id:
-		StatusEnum.Values.Completed:
+		StatusDef.Values.Completed:
 			_complete_task()
-		StatusEnum.Values.Abandoned:
+		StatusDef.Values.Abandoned:
 			_abandon_task()
 
 

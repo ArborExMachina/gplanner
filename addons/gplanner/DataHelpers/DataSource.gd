@@ -6,6 +6,7 @@ const _working_dir = "user://Projects"
 const SQLite = preload("res://addons/godot-sqlite/bin/gdsqlite.gdns")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
+const StatusDef = preload("res://addons/gplanner/DataHelpers/StatusDef.gd")
 
 
 static func list_source_dirs()->Array:
@@ -42,6 +43,21 @@ func _init_db()->void:
 	})
 	_db.query("INSERT INTO ProjectInfo (Field, Value) VALUES ('DBVersion', '%s');" % save_format_version)
 	
+	_db.create_table("StatusDefs", {
+		"Id": {"data_type": "int", "not_null": true, "primary_key": true, "auto_increment": true},
+		"Name": {"data_type": "TEXT", "not_null": true},
+		"Color": {"data_type": "TEXT", "not_null": true, "default": "#ffffff"},
+	})
+	var status_q:String = """INSERT INTO StatusDefs (Name, Color) 
+VALUES
+('New', '#61e0fd'),
+('Active', '#f2fd61'),
+('Hold', '#ffc156'),
+('Completed', '#18c427'),
+('Abandoned', '#aaa294');
+"""
+	_db.query(status_q)
+	
 	_db.create_table("Milestones", {
 		"Id": {"data_type": "int", "not_null": true, "primary_key": true, "auto_increment": true},
 		"Name": {"data_type": "TEXT", "not_null": true},
@@ -65,23 +81,11 @@ func _init_db()->void:
 );"""
 	_do_query(q)
 
-func link_task_to_milestone(task_id:int, ms_id:int)->void:
-	if task_id < 0:
-		return
-	
-	var query:String = "DELETE FROM MilestoneTasks WHERE TaskID = %s" % task_id
-	_do_query(query)
-	
-	if ms_id < 0:
-		return
-	
-	query = "INSERT INTO MilestoneTasks (MilestoneID, TaskID) VALUES (%s, %s)" % [ms_id, task_id]
-	_do_query(query)
-
 
 func _do_query(query:String)->void:
 	if !_db.query(query):
 		push_error("%s %s" % [query, _db.error_message])
+
 
 func _get_task_binding_data(where, orderby)->Array:
 	var query = """SELECT Id, MilestoneID, Title, Status, Priority
@@ -144,6 +148,18 @@ func get_db_version()->int:
 		push_error("failed to get db version")
 	return int(_db.query_result[0].Value)
 
+func get_status_defs()->Array:
+	var q:String = "SELECT * FROM StatusDefs"
+	_do_query(q)
+	
+	var defs := []
+	for row in _db.query_result:
+		var def := StatusDef.new()
+		def.id = row.Id
+		def.name = row.Name
+		def.color = Color(row.Color)
+		defs.append(def)
+	return defs
 
 func migrate(from_version:int)->void:
 	print("migrating db versions")
@@ -245,6 +261,19 @@ func commit_milestone(ms:Milestone)->bool:
 	
 	ms._unsaved_changes = false
 	return true
+
+func link_task_to_milestone(task_id:int, ms_id:int)->void:
+	if task_id < 0:
+		return
+	
+	var query:String = "DELETE FROM MilestoneTasks WHERE TaskID = %s" % task_id
+	_do_query(query)
+	
+	if ms_id < 0:
+		return
+	
+	query = "INSERT INTO MilestoneTasks (MilestoneID, TaskID) VALUES (%s, %s)" % [ms_id, task_id]
+	_do_query(query)
 
 func retrieve_task(task_id:int)->Task:
 	var results:Array = _db.select_rows("Tasks", "Id = %s" % task_id, ["*"])

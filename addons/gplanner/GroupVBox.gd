@@ -4,7 +4,7 @@ tool
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
 const DataBinder = preload("res://addons/gplanner/DataHelpers/DataBindCollection.gd")
-const StatusEnum = preload("res://addons/gplanner/DataHelpers/StatusEnum.gd")
+const StatusDef = preload("res://addons/gplanner/DataHelpers/StatusDef.gd")
 
 signal item_clicked(task_id)
 
@@ -45,8 +45,8 @@ func refresh_member_list(data_binds:DataBinder, show_hidden)->void:
 	
 	for task_data in _project.get_milestone_tasks(_milestone.id):
 		if (!show_hidden 
-			and( task_data.status == StatusEnum.Values.Completed 
-			or task_data.status == StatusEnum.Values.Abandoned)):
+			and( task_data.status == StatusDef.Values.Completed 
+			or task_data.status == StatusDef.Values.Abandoned)):
 			continue
 		var task_button := Button.new()
 		vbox.add_child(task_button)
@@ -56,7 +56,8 @@ func refresh_member_list(data_binds:DataBinder, show_hidden)->void:
 		task_button.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
 		task_button.align = Button.ALIGN_LEFT
 		data_binds.bind(DataBinder.TaskType, task_data.task_id, Task.Fields.Name, task_button, "text")
-	
+		task_button.modulate = StatusDef.Colors[task_data.status]
+		
 	if is_expanded:
 		shrink()
 		expand()

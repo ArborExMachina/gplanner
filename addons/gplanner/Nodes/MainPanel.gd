@@ -10,7 +10,7 @@ const Project := preload("res://addons/gplanner/DataHelpers/Project.gd")
 const TicketEditor := preload("res://addons/gplanner/Editors/TicketEditor.gd")
 const Milestone = preload("res://addons/gplanner/DataHelpers/Milestone.gd")
 const Task = preload("res://addons/gplanner/DataHelpers/Task.gd")
-const StatusEnum = preload("res://addons/gplanner/DataHelpers/StatusEnum.gd")
+const StatusDef = preload("res://addons/gplanner/DataHelpers/StatusDef.gd")
 const DataBinder = preload("res://addons/gplanner/DataHelpers/DataBindCollection.gd")
 
 # Scenes
@@ -69,6 +69,7 @@ func _ready() -> void:
 	save_changes_dialog.connect("modal_closed", self, "_on_SaveUnsavedDialog_cancelled")
 	unsaved_close.connect("pressed", self, "_on_SaveUnsavedDialog_cancelled")
 	unsaved_cancel.connect("pressed", self, "_on_SaveUnsavedDialog_cancelled")
+
 
 func _exit_tree() -> void:
 	if ticket_editor_instance != null:
@@ -167,8 +168,8 @@ func _refresh_task_list(only_clear:bool = false)->void:
 	
 	for task_data in project.get_all_task_data():
 		if (task_data.milestone_id > 0 
-			or task_data.status == StatusEnum.Values.Abandoned 
-			or task_data.status == StatusEnum.Values.Completed):
+			or task_data.status == StatusDef.Values.Abandoned 
+			or task_data.status == StatusDef.Values.Completed):
 			continue
 		var task_button = Button.new()
 		task_backlog_container.add_child(task_button)

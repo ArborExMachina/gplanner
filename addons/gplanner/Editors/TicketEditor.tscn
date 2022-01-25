@@ -2,9 +2,7 @@
 
 [ext_resource path="res://addons/gplanner/Widgets/LinkList.tscn" type="PackedScene" id=1]
 [ext_resource path="res://addons/gplanner/Editors/TicketEditor.gd" type="Script" id=2]
-
-[sub_resource type="Theme" id=3]
-PopupMenu/icons/checked = null
+[ext_resource path="res://addons/gplanner/Widgets/PerItemColorPopupMenu/PerItemColorMenuButton.tscn" type="PackedScene" id=3]
 
 [node name="TicketEditor" type="VBoxContainer"]
 anchor_right = 1.0
@@ -17,6 +15,7 @@ script = ExtResource( 2 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
+_label_icon_path = "res://addons/gplanner/Assets/crappylabel.png"
 _task_name_path = NodePath("TicketMainInfo/Name")
 _description_path = NodePath("Description")
 _blockedby_linklist_path = NodePath("BlockedByList")
@@ -37,23 +36,20 @@ text = "Ticket Name"
 align = 1
 expand_to_text_length = true
 
-[node name="MilestoneClassification" type="MenuButton" parent="TicketMainInfo"]
+[node name="MilestoneClassification" parent="TicketMainInfo" instance=ExtResource( 3 )]
 margin_left = 304.0
 margin_right = 380.0
 margin_bottom = 24.0
 text = "Milestone"
-flat = false
-items = [ "Item 0", null, 0, false, false, -1, 0, null, "", false ]
 
 [node name="PriorotyBox" type="SpinBox" parent="TicketMainInfo"]
 margin_left = 384.0
 margin_right = 494.0
 margin_bottom = 24.0
 rect_min_size = Vector2( 110, 0 )
-min_value = -1.0
-max_value = 10000.0
 value = -1.0
 allow_greater = true
+allow_lesser = true
 prefix = "Priority"
 
 [node name="Status" type="HBoxContainer" parent="."]
@@ -67,13 +63,10 @@ margin_right = 43.0
 margin_bottom = 17.0
 text = "Status:"
 
-[node name="StatusMenuButton" type="MenuButton" parent="Status"]
+[node name="StatusMenuButton" parent="Status" instance=ExtResource( 3 )]
 margin_left = 47.0
 margin_right = 87.0
-margin_bottom = 20.0
-theme = SubResource( 3 )
 text = "New"
-items = [ "New", null, 0, false, false, 0, 0, null, "", false, "Active", null, 0, false, false, 1, 0, null, "", false, "Hold", null, 0, false, false, 2, 0, null, "", false, "Complete", null, 0, false, false, 3, 0, null, "", false, "Abandoned", null, 0, false, false, 4, 0, null, "", false ]
 
 [node name="BlockingList" parent="." instance=ExtResource( 1 )]
 margin_top = 52.0

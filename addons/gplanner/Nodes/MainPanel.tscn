@@ -4,13 +4,6 @@
 [ext_resource path="res://addons/gplanner/Assets/checked.png" type="Texture" id=2]
 [ext_resource path="res://addons/gplanner/Assets/diskette.png" type="Texture" id=3]
 
-[sub_resource type="GDScript" id=1]
-script/source = "extends PopupMenu
-
-func _on_Close_pressed() -> void:
-	hide()
-"
-
 [sub_resource type="GDScript" id=2]
 script/source = "extends AcceptDialog
 
@@ -27,6 +20,13 @@ func _on_LineEdit_text_entered(new_text: String) -> void:
 	get_ok().emit_signal(\"pressed\")
 "
 
+[sub_resource type="GDScript" id=1]
+script/source = "extends PopupMenu
+
+func _on_Close_pressed() -> void:
+	hide()
+"
+
 [node name="MainPanel" type="PanelContainer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -36,7 +36,7 @@ __meta__ = {
 }
 inspector_container_path = NodePath("VSplitContainer/Body/Inspector")
 groups_container_path = NodePath("VSplitContainer/Body/TabContainer/Milestones/MilestoneGroupContainer")
-open_project_popup_path = NodePath("PopupContainer/OpenProjectOptions")
+open_project_popup_path = NodePath("OpenProjectOptions")
 new_project_popup_path = NodePath("PopupContainer/NewProjectName")
 new_project_lineedit_path = NodePath("PopupContainer/NewProjectName/LineEdit")
 project_name_label_path = NodePath("VSplitContainer/MenuStrip/ProjectNameLabel")
@@ -162,24 +162,6 @@ margin_right = 1017.0
 margin_bottom = 593.0
 mouse_filter = 2
 
-[node name="OpenProjectOptions" type="PopupMenu" parent="PopupContainer"]
-margin_left = 473.0
-margin_top = 258.0
-margin_right = 536.0
-margin_bottom = 328.0
-items = [ "Item 0", null, 0, false, false, 0, 0, null, "", false, "Item 1", null, 0, false, false, 1, 0, null, "", false, "Item 2", null, 0, false, false, 2, 0, null, "", false ]
-script = SubResource( 1 )
-
-[node name="Button" type="Button" parent="PopupContainer/OpenProjectOptions"]
-margin_left = 60.0
-margin_top = -18.0
-margin_right = 80.0
-margin_bottom = 2.0
-text = "X"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
 [node name="NewProjectName" type="AcceptDialog" parent="PopupContainer"]
 margin_left = 355.0
 margin_top = 259.0
@@ -225,13 +207,30 @@ window_title = "Unsaved Changes"
 dialog_text = "You must save before preforming this action.
 Save now?"
 
+[node name="OpenProjectOptions" type="PopupMenu" parent="."]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 1017.0
+margin_bottom = 593.0
+items = [ "Item 0", null, 0, false, false, 0, 0, null, "", false, "Item 1", null, 0, false, false, 1, 0, null, "", false, "Item 2", null, 0, false, false, 2, 0, null, "", false ]
+script = SubResource( 1 )
+
+[node name="Button" type="Button" parent="OpenProjectOptions"]
+margin_top = -16.0
+margin_right = 20.0
+margin_bottom = 4.0
+text = "X"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
 [connection signal="pressed" from="VSplitContainer/MenuStrip/NewTicket" to="." method="_on_NewTicket_pressed"]
 [connection signal="pressed" from="VSplitContainer/MenuStrip/ProjectSaveStatus" to="." method="_on_ProjectSaveStatus_pressed"]
 [connection signal="pressed" from="VSplitContainer/Body/TabContainer/Milestones/NewMilestoneButton" to="." method="_on_NewMilestoneButton_pressed"]
-[connection signal="index_pressed" from="PopupContainer/OpenProjectOptions" to="." method="_on_OpenProjectOptions_index_pressed"]
-[connection signal="pressed" from="PopupContainer/OpenProjectOptions/Button" to="PopupContainer/OpenProjectOptions" method="_on_Close_pressed"]
 [connection signal="confirmed" from="PopupContainer/NewProjectName" to="." method="_on_NewProjectName_confirmed"]
 [connection signal="text_entered" from="PopupContainer/NewProjectName/LineEdit" to="PopupContainer/NewProjectName" method="_on_LineEdit_text_entered"]
 [connection signal="confirmed" from="PopupContainer/NewMilestoneName" to="." method="_on_NewMilestoneName_confirmed"]
 [connection signal="text_entered" from="PopupContainer/NewMilestoneName/LineEdit" to="PopupContainer/NewMilestoneName" method="_on_LineEdit_text_entered"]
 [connection signal="confirmed" from="PopupContainer/SaveUnsavedDialog" to="." method="_on_SaveUnsavedDialog_confirmed"]
+[connection signal="index_pressed" from="OpenProjectOptions" to="." method="_on_OpenProjectOptions_index_pressed"]
+[connection signal="pressed" from="OpenProjectOptions/Button" to="OpenProjectOptions" method="_on_Close_pressed"]
