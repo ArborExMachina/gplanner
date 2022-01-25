@@ -16,7 +16,7 @@ const PIMenuButton = preload("res://addons/gplanner/Widgets/PerItemColorPopupMen
 const ungrouped_name = "Backlog"
 const ungrouped_id = -1
 
-export(String,FILE) var _label_icon_path:String
+export var _label_icon:Texture
 export(NodePath) var _task_name_path
 export(NodePath) var _description_path
 export(NodePath) var _blockedby_linklist_path
@@ -92,8 +92,7 @@ func load_ticket(project, task_id:int)->bool:
 	var selected:int = 0
 	for ms in project.get_milestones():
 		ms = ms as Milestone
-		var tex:StreamTexture = load(_label_icon_path) as StreamTexture
-		_milestone_menu.add_colored_item(tex, ms.milestone_name, ms._color, ms.id)
+		_milestone_menu.add_colored_item(_label_icon, ms.milestone_name, ms._color, ms.id)
 		i += 1
 	_milestone_menu.add_colored_item(null, ungrouped_name, Color.gray, ungrouped_id)
 	
@@ -113,8 +112,7 @@ func load_ticket(project, task_id:int)->bool:
 func update_milestone_options(new_milestone:Milestone)->void:
 	if !_milestone_menu: 
 		return
-	var tex:StreamTexture = load(_label_icon_path) as StreamTexture
-	_milestone_menu.add_icon_item(tex, new_milestone.milestone_name, new_milestone.id)
+	_milestone_menu.add_icon_item(_label_icon, new_milestone.milestone_name, new_milestone.id)
 
 
 func _queue_save()->void:

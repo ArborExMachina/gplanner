@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
 [ext_resource path="res://addons/gplanner/Widgets/LinkList.tscn" type="PackedScene" id=1]
 [ext_resource path="res://addons/gplanner/Editors/TicketEditor.gd" type="Script" id=2]
 [ext_resource path="res://addons/gplanner/Widgets/PerItemColorPopupMenu/PerItemColorMenuButton.tscn" type="PackedScene" id=3]
+[ext_resource path="res://addons/gplanner/Assets/tag.png" type="Texture" id=4]
 
 [node name="TicketEditor" type="VBoxContainer"]
 anchor_right = 1.0
@@ -15,7 +16,7 @@ script = ExtResource( 2 )
 __meta__ = {
 "_edit_use_anchors_": false
 }
-_label_icon_path = "res://addons/gplanner/Assets/crappylabel.png"
+_label_icon = ExtResource( 4 )
 _task_name_path = NodePath("TicketMainInfo/Name")
 _description_path = NodePath("Description")
 _blockedby_linklist_path = NodePath("BlockedByList")
@@ -47,7 +48,6 @@ margin_left = 384.0
 margin_right = 494.0
 margin_bottom = 24.0
 rect_min_size = Vector2( 110, 0 )
-value = -1.0
 allow_greater = true
 allow_lesser = true
 prefix = "Priority"
