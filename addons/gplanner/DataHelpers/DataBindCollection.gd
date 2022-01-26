@@ -16,6 +16,7 @@ class SourceBind:
 		_targets.append(target)
 		_properties.append(property)
 
+
 	func remove_target(target:Object)->void:
 		var i = len(_targets) - 1
 		while(i >= 0):
@@ -24,12 +25,15 @@ class SourceBind:
 				_properties.remove(i)
 			i -= 1
 
+
 	func update_targets(new_value):
 		for i in range(len(_targets)):
 			var target:Object = _targets[i]
 			var property:String = _properties[i]
 			if is_instance_valid(target):
 				target.set(property, new_value)
+
+
 
 var _source_binds := {}
 var _bindkeys := {}

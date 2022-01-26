@@ -1,13 +1,14 @@
 extends Reference
 
 signal changed(field, value)
-enum Fields{Name, Colr}
+enum Fields{Name, Colr, Priority}
 
 var _unsaved_changes:bool = false
 var _is_backed:bool = false
 var id:int setget set_id, get_id
 var milestone_name:String setget set_ms_name, get_ms_name
 var _color:Color
+var priority:int setget set_priority, get_priority
 
 func _init() -> void:
 	_unsaved_changes = true
@@ -20,6 +21,7 @@ func _init() -> void:
 	id = -1
 	_is_backed = false
 
+
 func get_id()->int:
 	return id
 
@@ -30,6 +32,7 @@ func set_id(value:int)->void:
 	else:
 		push_error("Milestone ids can not be changed")
 
+
 func get_ms_name()->String:
 	return milestone_name
 
@@ -37,3 +40,13 @@ func set_ms_name(value:String)->void:
 	_unsaved_changes = true
 	milestone_name = value
 	emit_signal("changed", Fields.Name, value)
+
+
+
+func set_priority(value:int)->void:
+	_unsaved_changes = true
+	priority = value
+	emit_signal("changed", Fields.Priority, value)
+
+func get_priority()->int:
+	return priority

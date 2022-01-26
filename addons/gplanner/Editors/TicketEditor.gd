@@ -50,7 +50,7 @@ func _ready() -> void:
 	_status_menu.connect("index_pressed", self, "_on_status_clicked")
 	for status in StatusDef.Values:
 		var id:int = StatusDef.Values[status]
-		_status_menu.add_colored_item(null, status, StatusDef.Colors[id], id)
+		_status_menu.add_colored_item(null, status, StatusDef.get_color(id), id)
 
 func _process(delta: float) -> void:
 	if !_needs_save or !_project or !_task:
@@ -66,7 +66,7 @@ func _process(delta: float) -> void:
 		_needs_save = false
 
 
-func load_ticket(project, task_id:int)->bool:
+func load_ticket(project, task_id:int, ms_id:int = -1)->bool:
 	if _task:
 		if _task.id == task_id:
 			return true
@@ -81,6 +81,9 @@ func load_ticket(project, task_id:int)->bool:
 		_task_name.grab_focus()
 	else:
 		_task = project.open_task(task_id)
+	task_id = _task.id
+	if ms_id > 0:
+		_project.assign_task_to_milestone(task_id, ms_id)
 	
 	_task_name.placeholder_text = "enter a title"
 	var current_milestone = project.get_tasks_milestone(task_id)

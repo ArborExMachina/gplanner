@@ -22,7 +22,6 @@ const StatusDef = preload("res://addons/gplanner/DataHelpers/StatusDef.gd")
 var _dsource:DataSource
 var _unsaved_changes:bool = false
 var _name:String = "Default"
-var _nextTaskID:int = 1
 var _milestones := {}
 var _open_tasks := {}
 
@@ -69,16 +68,23 @@ func _task_changed(field, value)->void:
 func new_milestone(name:String)->Milestone:
 	_unsaved_changes = true
 	var ms = Milestone.new()
-	_nextTaskID += 1
 	ms.milestone_name = name
-	ms.id
+	_dsource.commit_milestone(ms)
 	_milestones[ms.id] = ms
 	ms.connect("changed", self, "_milestone_changed")
 	emit_signal("milestone_created", ms)
 	return ms
 
 func get_milestones()->Array:
-	return _milestones.values()
+	var milestones:Array = _milestones.values()
+	milestones.sort_custom(_MSSorter, "asc")
+	return milestones
+
+class _MSSorter:
+	static func asc(a, b)->bool:
+		if a.priority < b.priority:
+			return true
+		return false
 
 func get_milestone(id:int)->Milestone:
 	return _milestones.get(id, null)
@@ -109,10 +115,8 @@ func get_milestone_tasks(milestone_id:int)->Array:
 func open_new_task()->Task:
 	_unsaved_changes = true
 	var task := Task.new()
+	_dsource.commit_task(task)
 	_open_tasks[task.id] = task
-	
-	
-	save_all()
 	task.connect("changed", self, "_task_changed")
 	emit_signal("task_opened", task)
 	return task
@@ -152,8 +156,8 @@ func get_open_task(id:int)->Task:
 		return null
 
 func assign_task_to_milestone(task_id:int, ms_id:int)->void:
-	var task_data:Task.BindingData = _dsource.get_task_binding_data(task_id)
 	_dsource.link_task_to_milestone(task_id, ms_id)
+	var task_data:Task.BindingData = _dsource.get_task_binding_data(task_id)
 	emit_signal("task_assigned_to_group", task_id, task_data.milestone_id, ms_id)
 
 func open(name:String)->bool:

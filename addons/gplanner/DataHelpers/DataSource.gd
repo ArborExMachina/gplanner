@@ -61,6 +61,8 @@ VALUES
 	_db.create_table("Milestones", {
 		"Id": {"data_type": "int", "not_null": true, "primary_key": true, "auto_increment": true},
 		"Name": {"data_type": "TEXT", "not_null": true},
+		"Color": {"data_type": "TEXT", "not_null": true},
+		"Priority": {"data_type": "int", "not_null": true, "default": 0}
 	})
 	_db.create_table("Tasks", {
 		"Id": {"data_type": "int", "not_null": true, "primary_key": true, "auto_increment": true},
@@ -250,10 +252,10 @@ func commit_milestone(ms:Milestone)->bool:
 	var query:String
 	var is_insert := false
 	if ms.id < 0:
-		query = "INSERT INTO Milestones (Name) VALUES ('%s')" % ms.milestone_name
+		query = "INSERT INTO Milestones (Name,Color,Priority) VALUES ('%s','%s',%s)" % [ms.milestone_name, ms._color.to_html(true), ms.priority]
 		is_insert = true
 	else:
-		query = "UPDATE Milestones SET Name = '%s' WHERE Id = %s" % [ms.milestone_name, ms.id]
+		query = "UPDATE Milestones SET Name='%s', Color='%s', Priority=%s WHERE Id = %s" % [ms.milestone_name, ms._color.to_html(true), ms.priority, ms.id]
 	
 	_do_query(query)
 	if is_insert:
@@ -308,8 +310,9 @@ func retrieve_all_milestone()->Array:
 		var ms := Milestone.new()
 		ms.id = row.Id
 		ms.milestone_name = row.Name
-		var cfs = row.Color.split(",")
-		ms._color = Color(float(cfs[0]), float(cfs[1]), float(cfs[2]), float(cfs[3]))		
+		#var cfs = row.Color.split(",")
+		ms._color = Color(row.Color)#Color(float(cfs[0]), float(cfs[1]), float(cfs[2]), float(cfs[3]))
+		ms.priority = row.Priority
 		ms._unsaved_changes = false
 		mss.append(ms)
 	

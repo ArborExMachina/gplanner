@@ -1,7 +1,10 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://addons/gplanner/GroupVBox.gd" type="Script" id=1]
 [ext_resource path="res://addons/gplanner/themes/Ubuntu_Condensed/FontTheme.tres" type="Theme" id=2]
+[ext_resource path="res://addons/gplanner/themes/Ubuntu_Condensed/plus_texture_stylebox.tres" type="StyleBox" id=3]
+[ext_resource path="res://addons/gplanner/themes/Ubuntu_Condensed/wrench_texture_stylebox.tres" type="StyleBox" id=4]
+[ext_resource path="res://addons/gplanner/themes/Ubuntu_Condensed/trash_texture_stylebox.tres" type="StyleBox" id=5]
 
 [node name="GroupBox" type="VBoxContainer"]
 margin_right = 88.0
@@ -13,22 +16,79 @@ __meta__ = {
 }
 
 [node name="GroupButton" type="Button" parent="."]
-margin_right = 300.0
+margin_right = 88.0
 margin_bottom = 25.0
-rect_min_size = Vector2( 300, 0 )
 toggle_mode = true
 text = "Group"
-clip_text = true
 align = 0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="GroupButton"]
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+margin_left = -68.0
+margin_top = -9.5
+margin_bottom = 10.5
+custom_constants/separation = 1
+alignment = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="AddTaskButton" type="Button" parent="GroupButton/HBoxContainer"]
+margin_left = 6.0
+margin_right = 26.0
+margin_bottom = 20.0
+rect_min_size = Vector2( 20, 20 )
+custom_styles/hover = ExtResource( 3 )
+custom_styles/pressed = ExtResource( 3 )
+custom_styles/focus = ExtResource( 3 )
+custom_styles/normal = ExtResource( 3 )
+align = 0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="EditButton" type="Button" parent="GroupButton/HBoxContainer"]
+margin_left = 27.0
+margin_right = 47.0
+margin_bottom = 20.0
+rect_min_size = Vector2( 20, 20 )
+custom_styles/hover = ExtResource( 4 )
+custom_styles/pressed = ExtResource( 4 )
+custom_styles/focus = ExtResource( 4 )
+custom_styles/normal = ExtResource( 4 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="DeleteButton" type="Button" parent="GroupButton/HBoxContainer"]
+margin_left = 48.0
+margin_right = 68.0
+margin_bottom = 20.0
+rect_min_size = Vector2( 20, 20 )
+custom_styles/hover = ExtResource( 5 )
+custom_styles/pressed = ExtResource( 5 )
+custom_styles/focus = ExtResource( 5 )
+custom_styles/normal = ExtResource( 5 )
+text = "x"
+align = 0
+__meta__ = {
+"_edit_use_anchors_": false
+}
 
 [node name="MemberArea" type="MarginContainer" parent="."]
 margin_top = 29.0
-margin_right = 300.0
+margin_right = 88.0
 margin_bottom = 29.0
 custom_constants/margin_left = 10
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MemberArea"]
 margin_left = 10.0
-margin_right = 300.0
+margin_right = 88.0
 
 [connection signal="toggled" from="GroupButton" to="." method="_on_GroupButton_toggled"]
+[connection signal="pressed" from="GroupButton/HBoxContainer/AddTaskButton" to="." method="_on_AddTaskButton_pressed"]
+[connection signal="pressed" from="GroupButton/HBoxContainer/EditButton" to="." method="_on_EditButton_pressed"]
+[connection signal="pressed" from="GroupButton/HBoxContainer/DeleteButton" to="." method="_on_DeleteButton_pressed"]

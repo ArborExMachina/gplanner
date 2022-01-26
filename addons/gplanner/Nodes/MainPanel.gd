@@ -167,17 +167,17 @@ func _refresh_task_list(only_clear:bool = false)->void:
 		return
 	
 	for task_data in project.get_all_task_data():
-		if (task_data.milestone_id > 0 
-			or task_data.status == StatusDef.Values.Abandoned 
-			or task_data.status == StatusDef.Values.Completed):
+		if (task_data.milestone_id > 0):
 			continue
 		var task_button = Button.new()
 		task_backlog_container.add_child(task_button)
 		task_button.text = task_data.title
 		task_button.clip_text = true
+		task_button.self_modulate = StatusDef.get_color(task_data.status)
 		task_button.connect("pressed", self, "_handle_task_click", [task_data.task_id])
 		_data_binder.bind(DataBinder.TaskType, task_data.task_id, Task.Fields.Name, task_button, "text")
-
+		_data_binder.bind(DataBinder.TaskType, task_data.task_id, Task.Fields.Status, task_button, "self_modulate")
+	
 
 func _add_milestone(milestone:Milestone)->void:
 	var group_box:GroupBox = group_scene.instance()
@@ -185,11 +185,28 @@ func _add_milestone(milestone:Milestone)->void:
 	group_box.load_milestone(project, milestone.id, _data_binder, _milestones_show_hidden_tasks)
 	group_box.shrink()
 	group_box.connect("item_clicked", self, "_handle_task_click")
+	group_box.connect("want_edit_milestone", self, "_on_want_edit_milestone")
+	group_box.connect("want_add_task_to_ms", self, "_on_want_add_task_to_milestone")
 	_group_boxes[milestone.id] = group_box
 	ticket_editor_instance.update_milestone_options(milestone)
 
+func _refresh_milestones()->void:
+	var groups = groups_container.get_children()
+	for g in groups:
+		g.clear()
+		groups_container.remove_child(g)
+		g.queue_free()
+	
+	var milestones:Array = project.get_milestones()
+	for ms in milestones:
+		_add_milestone(ms)
+
 func _remove_milestone(id:int)->void:
-	pass
+	var group_box:GroupBox = _group_boxes[id]
+	group_box.shrink()
+	groups_container.remove_child(group_box)
+	group_box.queue_free()
+
 
 func _set_inspector(type)->void:
 	if type == null and active_editor != null:
@@ -291,9 +308,9 @@ func _on_task_grouping_changed(task_id:int, old_group_id:int, new_group_id:int)-
 	var new_groupbox: GroupBox = _group_boxes[new_group_id] if new_ms else null
 	
 	if old_groupbox:
-		old_groupbox.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		old_groupbox.refresh_member_list(_milestones_show_hidden_tasks)
 	if new_groupbox:
-		new_groupbox.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		new_groupbox.refresh_member_list(_milestones_show_hidden_tasks)
 	project.save_all()
 	_refresh_task_list()
 
@@ -307,28 +324,28 @@ func _on_editied_task_saved(task_id:int)->void:
 		return
 	var group_box:GroupBox = _group_boxes[milestone.id]
 	if group_box.is_expanded:
-		group_box.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		group_box.refresh_member_list( _milestones_show_hidden_tasks)
 
 
 func _on_task_abandoned(tid:int, msid:int)->void:
 	if msid < 0:
 		_refresh_task_list()
 	else:
-		_group_boxes[msid].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		_group_boxes[msid].refresh_member_list(_milestones_show_hidden_tasks)
 	
 
 func _on_task_completed(id:int, msid:int)->void:
 	if msid < 0:
 		_refresh_task_list()
 	else:
-		_group_boxes[msid].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		_group_boxes[msid].refresh_member_list(_milestones_show_hidden_tasks)
 
 
 func _on_task_deleted(id:int, msid:int)->void:
 	if msid < 0:
 		_refresh_task_list()
 	else:
-		_group_boxes[msid].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		_group_boxes[msid].refresh_member_list(_milestones_show_hidden_tasks)
 	
 
 func _on_milestone_deleted(id:int)->void:
@@ -345,22 +362,27 @@ func _register_observer_task(task:Task)->void:
 
 
 func _on_milestone_changed(field:int, value, ms:Milestone)->void:
-	pass
+	match field:
+		Milestone.Fields.Name:
+			_data_binder.publish_change(DataBinder.TaskType, ms.id, Milestone.Fields.Name, value)
+		Milestone.Fields.Priority:
+			_refresh_milestones()
 
 func _on_project_save_status_changed(is_unsaved:bool)->void:
 	save_status.texture_normal = unsaved_icon if is_unsaved else saved_icon
 
 func _on_task_changed(field:int, value, task:Task)->void:
-	var key = null
 	match field:
 		Task.Fields.Name:
 			_data_binder.publish_change(DataBinder.TaskType, task.id, Task.Fields.Name, value)
 		Task.Fields.Priority:
 			var task_group_info:Task.BindingData = project.get_task_data(task.id)
 			if task_group_info.milestone_id > 0:
-				_group_boxes[task_group_info.milestone_id].refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+				_group_boxes[task_group_info.milestone_id].refresh_member_list(_milestones_show_hidden_tasks)
 			else:
 				_refresh_task_list()
+		Task.Fields.Status:
+			_data_binder.publish_change(DataBinder.TaskType, task.id, Task.Fields.Status, StatusDef.get_color(value))
 
 
 func _on_ProjectSaveStatus_pressed() -> void:
@@ -368,8 +390,21 @@ func _on_ProjectSaveStatus_pressed() -> void:
 		return
 	_full_save()
 
+
 func _on_ms_show_hidden_tasks_changed(new_value:bool)->void:
 	_milestones_show_hidden_tasks = new_value
 	for group_box in _group_boxes.values():
-		group_box.refresh_member_list(_data_binder, _milestones_show_hidden_tasks)
+		group_box.refresh_member_list(_milestones_show_hidden_tasks)
 		
+
+func _on_want_edit_milestone(ms:Milestone)->void:
+	print("Implement milestone editing to edit ms %s" % ms.id)
+
+
+func _on_want_add_task_to_milestone(ms:Milestone)->void:
+#		_post_save_action_stack.append(["_handle_task_click",[task_id]])
+#		save_changes_dialog.show()
+#		return
+	if active_editor != ticket_editor_instance:
+		_set_inspector(TicketEditor)
+	ticket_editor_instance.load_ticket(project, -1, ms.id)
